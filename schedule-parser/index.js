@@ -129,6 +129,8 @@ app.post('/api/schedule', async (req, res) => {
         const html = iconv.decode(Buffer.from(response.data), 'win1251');
         const $ = cheerio.load(html);
 
+        const weekInfo = $('td:contains("Неделя: ")').next().find('td[width="100%"]').text().trim();
+
         const schedule = [];
         const mainTable = $('.slt');
 
@@ -227,7 +229,7 @@ app.post('/api/schedule', async (req, res) => {
             }
         }
         
-        res.json(schedule);
+        res.json({ weekInfo, schedule });
 
     } catch (error) {
         console.error('Specific error message:', error.message);
