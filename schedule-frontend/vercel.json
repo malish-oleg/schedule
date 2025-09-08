@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "http://АДРЕС_ТВОЕГО_БЭКЕНДА/:path*"
+    },
+    {
       "source": "/((?!api|.*\\..*).*)",
       "destination": "/index.html"
     }
