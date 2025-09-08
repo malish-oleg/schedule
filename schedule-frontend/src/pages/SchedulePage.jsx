@@ -4,50 +4,50 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaChalkboardTeacher, FaMapMarkerAlt, FaClock, FaArrowLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { getWeekNumber } from '../utils/dateUtils';
 
 function SchedulePage() {
+    // `week` теперь может быть undefined, если его нет в URL
     const { facultyId, groupId, week } = useParams();
     const navigate = useNavigate();
 
     const [schedule, setSchedule] = useState({});
-    const [weekInfo, setWeekInfo] = useState(''); // Состояние для информации о неделе
-    const [groupName, setGroupName] = useState(''); // Состояние для имени группы
+    const [weekInfo, setWeekInfo] = useState('');
+    const [groupName, setGroupName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const dayOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
 
     useEffect(() => {
-        if (!facultyId || !groupId || !week) return;
+        if (!facultyId || !groupId) return;
 
         const fetchSchedule = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                setGroupName(''); // Сбрасываем имя группы при каждой новой загрузке
+                setGroupName('');
+                setWeekInfo('');
+                setSchedule({});
+
+                // Если `week` в URL есть, используем его. Если нет - вычисляем текущую неделю.
+                const weekToFetch = week || getWeekNumber(new Date());
 
                 const scheduleResponse = await axios.post(`${import.meta.env.VITE_API_URL}/api/schedule`, {
                     faculty_id: facultyId,
                     group_id: groupId,
-                    year_week_number: week
+                    year_week_number: weekToFetch.toString()
                 });
                 
-                // Деструктурируем новый ответ от бэкенда
-                const { weekInfo, schedule: lessons } = scheduleResponse.data;
-                setWeekInfo(weekInfo);
-
-                // Асинхронно подгружаем имя группы
+                // Вся логика обработки ответа должна быть здесь, ПОСЛЕ получения ответа
+                const { weekInfo: newWeekInfo, schedule: lessons } = scheduleResponse.data;
+                setWeekInfo(newWeekInfo);
+                
                 try {
                     const groupsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/groups/${facultyId}`);
                     const currentGroup = groupsResponse.data.find(g => g.id === groupId);
-                    if (currentGroup) {
-                        setGroupName(currentGroup.name);
-                    }
-                } catch (groupError) {
-                    console.error("Could not fetch group name", groupError);
-                    // Не прерываем выполнение, просто имя группы не будет отображено
-                }
+                    if (currentGroup) setGroupName(currentGroup.name);
+                } catch (groupError) { console.error("Could not fetch group name", groupError); }
                 
-                // Группируем расписание по дням и времени
                 const groupedByDay = lessons.reduce((acc, lesson) => {
                     (acc[lesson.day] = acc[lesson.day] || []).push(lesson);
                     return acc;
@@ -86,12 +86,14 @@ function SchedulePage() {
     }, [facultyId, groupId, week]);
 
     const handlePrevWeek = () => {
-        const prevWeek = parseInt(week, 10) - 1;
+        const currentWeekNumber = parseInt(week || getWeekNumber(new Date()), 10);
+        const prevWeek = currentWeekNumber - 1;
         navigate(`/schedule/${facultyId}/${groupId}/${prevWeek}`);
     };
 
     const handleNextWeek = () => {
-        const nextWeek = parseInt(week, 10) + 1;
+        const currentWeekNumber = parseInt(week || getWeekNumber(new Date()), 10);
+        const nextWeek = currentWeekNumber + 1;
         navigate(`/schedule/${facultyId}/${groupId}/${nextWeek}`);
     };
     
@@ -104,7 +106,7 @@ function SchedulePage() {
             <div className="schedule-title-container">
                 <button onClick={handlePrevWeek} className="nav-arrow"><FaChevronLeft /></button>
                 <div className="schedule-title">
-                    <h2 className="group-name">Группа {groupName || groupId}</h2> {/* Показываем ID, пока имя не загрузилось */}
+                    <h2 className="group-name">Группа {groupName || groupId}</h2>
                     <h1 className="schedule-header">Расписание</h1>
                     {weekInfo && <p className="week-info">{weekInfo}</p>}
                 </div>
@@ -112,7 +114,6 @@ function SchedulePage() {
             </div>
             
             {error ? (
-                // Оставляем только сообщение об ошибке, так как заголовок уже есть выше
                 <div className="no-lessons-card full-page-card"><h1>{error}</h1></div>
             ) : (
                 <div className="schedule-container">
