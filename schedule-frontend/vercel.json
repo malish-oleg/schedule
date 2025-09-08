@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://АДРЕС_ТВОЕГО_БЭКЕНДА/:path*"
+      "destination": "http://212.22.82.45:3001/:path*"
     },
     {
       "source": "/((?!api|.*\\..*).*)",
