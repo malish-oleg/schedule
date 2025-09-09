@@ -149,8 +149,8 @@ app.post('/api/schedule', async (req, res) => {
                 const cell = $(dayCell);
                 if (cell.text().trim() === '') {
                     schedule.push({
-                        day: headers[j]?.day || 'Unknown',
-                        date: headers[j]?.date || 'Unknown',
+                        day: headers[j]?.day || '',
+                        date: headers[j]?.date || '',
                         time: time,
                         name: 'Окно',
                         isEmpty: true,

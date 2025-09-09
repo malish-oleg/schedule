@@ -5,6 +5,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaChalkboardTeacher, FaMapMarkerAlt, FaClock, FaArrowLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { getWeekNumber } from '../utils/dateUtils';
+import Modal from '../components/Modal';
 
 function SchedulePage() {
     // `week` теперь может быть undefined, если его нет в URL
@@ -12,12 +13,25 @@ function SchedulePage() {
     const navigate = useNavigate();
     const dayRefs = useRef({});
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
+
     const [schedule, setSchedule] = useState({});
     const [weekInfo, setWeekInfo] = useState('');
     const [groupName, setGroupName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const dayOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+
+    const openModal = (timeSlot) => {
+        setSelectedTimeSlot(timeSlot);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedTimeSlot(null);
+    };
 
     useEffect(() => {
         if (!facultyId || !groupId) return;
@@ -152,7 +166,6 @@ function SchedulePage() {
                             <p className="date">{schedule[day][0]?.lessons[0]?.date || ' '}</p>
                           </div>
                           {schedule[day].map((timeSlot, index) => (
-                            <div key={index} className="lesson-card">
                               <div key={index} className="timeslot-wrapper">
                               <p className="time"><FaClock /> {timeSlot.time}</p>
                               
@@ -162,7 +175,7 @@ function SchedulePage() {
                                         <p>Окно</p>
                                     </div>
                                 ) : (
-                                    <div key={lessonIndex} className="choice-lesson">
+                                    <div key={lessonIndex} className="lesson-card choice-lesson" onClick={() => openModal(timeSlot)}>
                                       <div className="lesson-info" title={lesson.fullName}>
                                         <h3 className="lesson-name">{lesson.name}</h3>
                                         {lesson.type && <p className="lesson-type">{lesson.type}</p>}
@@ -186,12 +199,16 @@ function SchedulePage() {
                                 )
                               ))}
                               </div>
-                            </div>
                           ))}
                         </div>
                     ))}
                 </div>
             )}
+          <Modal 
+              isOpen={isModalOpen} 
+              onClose={closeModal} 
+              timeSlot={selectedTimeSlot} 
+          />
         </>
     );
 }

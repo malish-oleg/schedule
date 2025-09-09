@@ -131,7 +131,7 @@ h1 {
   margin: 0;
 }
 
-.lesson-card {
+.timeslot-wrapper {
   background-color: var(--color-border);
   border-radius: 8px;
   padding: 1rem;
@@ -142,7 +142,7 @@ h1 {
   gap: 0.75rem;
 }
 
-.lesson-card:hover {
+.timeslot-wrapper:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0,0,0,0.3);
   border-left-color: var(--color-secondary);
@@ -155,7 +155,7 @@ h1 {
   gap: 0.5rem;
 }
 
-.lesson-card .time {
+.timeslot-wrapper .time {
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--color-secondary);
