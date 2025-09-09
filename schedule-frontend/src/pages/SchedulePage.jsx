@@ -1,5 +1,3 @@
-// src/pages/SchedulePage.jsx
-
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -8,7 +6,6 @@ import { getWeekNumber } from '../utils/dateUtils';
 import Modal from '../components/Modal';
 
 function SchedulePage() {
-    // `week` теперь может быть undefined, если его нет в URL
     const { facultyId, groupId, week } = useParams();
     const navigate = useNavigate();
     const dayRefs = useRef({});
@@ -54,7 +51,6 @@ function SchedulePage() {
                 setWeekInfo('');
                 setSchedule({});
 
-                // Если `week` в URL есть, используем его. Если нет - вычисляем текущую неделю.
                 const weekToFetch = week || getWeekNumber(new Date());
 
                 const scheduleResponse = await axios.post(`${import.meta.env.VITE_API_URL}/api/schedule`, {
@@ -63,7 +59,6 @@ function SchedulePage() {
                     year_week_number: weekToFetch.toString()
                 });
                 
-                // Вся логика обработки ответа должна быть здесь, ПОСЛЕ получения ответа
                 const { weekInfo: newWeekInfo, schedule: lessons } = scheduleResponse.data;
                 setWeekInfo(newWeekInfo);
                 

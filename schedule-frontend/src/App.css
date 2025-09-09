@@ -56,10 +56,9 @@ h1 {
   color: var(--color-text-secondary);
   padding: 1rem;
   border-radius: 8px;
-  /* Убираем лишние эффекты от родителя */
   border-left: 2px dashed var(--color-border); 
   box-shadow: none;
-  transform: none !important; /* !important, чтобы перебить :hover */
+  transform: none !important;
 }
 
 .empty-lesson:hover {
@@ -78,10 +77,7 @@ h1 {
 }
 
 .day-column.is-today {
-  /* Добавляем яркую рамку */
   border: 2px solid var(--color-secondary); 
-  
-  /* Можно немного изменить фон, чтобы выделить еще сильнее */
   background-color: #222; 
 }
 .day-column.is-today .day-header h2 {
@@ -170,7 +166,7 @@ h1 {
 .timeslot-wrapper.is-choice {
   border-left-style: dashed;
   border-left-width: 4px;
-  border-left-color: #f39c12; /* Другой оттенок фиолетового */
+  border-left-color: #f39c12;
 }
 
 .timeslot-wrapper.is-choice:hover {
@@ -319,4 +315,14 @@ h1 {
   margin: 0;
   font-size: 1rem;
   color: var(--color-text-secondary);
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex-grow: 1;
 }
