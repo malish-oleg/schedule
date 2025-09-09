@@ -153,31 +153,39 @@ function SchedulePage() {
                           </div>
                           {schedule[day].map((timeSlot, index) => (
                             <div key={index} className="lesson-card">
+                              <div key={index} className="timeslot-wrapper">
                               <p className="time"><FaClock /> {timeSlot.time}</p>
                               
                               {timeSlot.lessons.map((lesson, lessonIndex) => (
-                                <div key={lessonIndex} className="choice-lesson">
-                                  <div className="lesson-info" title={lesson.fullName}>
-                                    <h3 className="lesson-name">{lesson.name}</h3>
-                                    {lesson.type && <p className="lesson-type">{lesson.type}</p>}
-                                  </div>
-                                  <div className="lesson-details">
-                                    {lesson.subgroups.map((sub, subIndex) => (
-                                      <div key={subIndex} className="subgroup-info">
-                                        <p className="teacher">
-                                          <FaChalkboardTeacher />
-                                          {sub.teacherShort || 'Не указан'}
-                                        </p>
-                                        <p className="room">
-                                          <FaMapMarkerAlt />
-                                          {sub.subgroupNumber && `(${sub.subgroupNumber}) `}
-                                          {sub.room || 'Не указана'}
-                                        </p>
+                                lesson.isEmpty ? (
+                                    <div key={lessonIndex} className="lesson-card empty-lesson">
+                                        <p>Окно</p>
+                                    </div>
+                                ) : (
+                                    <div key={lessonIndex} className="choice-lesson">
+                                      <div className="lesson-info" title={lesson.fullName}>
+                                        <h3 className="lesson-name">{lesson.name}</h3>
+                                        {lesson.type && <p className="lesson-type">{lesson.type}</p>}
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
+                                      <div className="lesson-details">
+                                        {lesson.subgroups.map((sub, subIndex) => (
+                                          <div key={subIndex} className="subgroup-info">
+                                            <p className="teacher">
+                                              <FaChalkboardTeacher />
+                                              {sub.teacherShort || 'Не указан'}
+                                            </p>
+                                            <p className="room">
+                                              <FaMapMarkerAlt />
+                                              {sub.subgroupNumber && `(${sub.subgroupNumber}) `}
+                                              {sub.room || 'Не указана'}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                )
                               ))}
+                              </div>
                             </div>
                           ))}
                         </div>

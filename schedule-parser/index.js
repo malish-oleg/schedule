@@ -147,7 +147,19 @@ app.post('/api/schedule', async (req, res) => {
 
             $(tr).children('td').each((j, dayCell) => {
                 const cell = $(dayCell);
-                if (cell.text().trim() === '') return;
+                if (cell.text().trim() === '') {
+                    schedule.push({
+                        day: headers[j]?.day || 'Unknown',
+                        date: headers[j]?.date || 'Unknown',
+                        time: time,
+                        name: 'Окно',
+                        isEmpty: true,
+                        fullName: '',
+                        type: '',
+                        subgroups: []
+                    });
+                    return;
+                }
 
                 const isChoiceLessons = cell.find('td.blb').length > 0;
 

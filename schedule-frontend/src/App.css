@@ -49,6 +49,22 @@ h1 {
   }
 }
 
+.empty-lesson {
+  background-color: transparent;
+  border: 2px dashed var(--color-border);
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 1rem;
+  border-radius: 8px;
+  /* Убираем лишние эффекты от родителя */
+  border-left: 2px dashed var(--color-border); 
+  box-shadow: none;
+  transform: none !important; /* !important, чтобы перебить :hover */
+}
+
+.empty-lesson:hover {
+  border-left-color: var(--color-border);
+}
 
 .day-column {
   background-color: var(--color-surface);
