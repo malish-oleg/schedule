@@ -166,7 +166,7 @@ function SchedulePage() {
                             <p className="date">{schedule[day][0]?.lessons[0]?.date || ' '}</p>
                           </div>
                           {schedule[day].map((timeSlot, index) => (
-                              <div key={index} className="timeslot-wrapper">
+                              <div key={index} className={`timeslot-wrapper ${timeSlot.lessons.length > 1 ? 'is-choice' : ''}`}>
                               <p className="time"><FaClock /> {timeSlot.time}</p>
                               
                               {timeSlot.lessons.map((lesson, lessonIndex) => (
