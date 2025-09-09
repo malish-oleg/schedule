@@ -6,7 +6,7 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-content">
-        <p>Разработано с ❤️ by malish_oleg</p>
+        <p>by malish_oleg ❤️</p>
         <p>По всем вопросам и предложениям, а также об обнаруженных ошибках можете обращаться в телеграмм</p>
         <div className="social-links">
           <a 
