@@ -130,6 +130,27 @@ app.post('/api/schedule', async (req, res) => {
         const $ = cheerio.load(html);
 
         const weekInfo = $('td:contains("Неделя: ")').next().find('td[width="100%"]').text().trim();
+        const startDateString = weekInfo.split(' ')[0];
+        const dateMap = {};
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(startDateString)) {
+            const [day, month, year] = startDateString.split('.').map(Number);
+            const mondayDate = new Date(year, month - 1, day);
+            
+            const daysOfWeek = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+
+            for (let i = 0; i < 7; i++) {
+                const currentDate = new Date(mondayDate);
+                currentDate.setDate(mondayDate.getDate() + i);
+                
+                const d = String(currentDate.getDate()).padStart(2, '0');
+                const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const y = currentDate.getFullYear();
+
+                dateMap[daysOfWeek[i]] = `${d}.${m}.${y}`;
+            }
+        } else {
+            console.warn("Could not parse start date from weekInfo:", weekInfo);
+        }
 
         const schedule = [];
         const mainTable = $('.slt');
@@ -137,8 +158,7 @@ app.post('/api/schedule', async (req, res) => {
         const headers = [];
         mainTable.find('> tbody > tr').first().find('th').slice(1).each((i, th) => {
             const dayText = $(th).contents().filter((_, el) => el.type === 'text').text().trim();
-            const dateText = $(th).find('i').text().trim();
-            headers.push({ day: dayText, date: dateText });
+            headers.push(dayText);
         });
 
         mainTable.find('> tbody > tr').slice(1).each((i, tr) => {
@@ -146,11 +166,12 @@ app.post('/api/schedule', async (req, res) => {
             if (!time) return;
 
             $(tr).children('td').each((j, dayCell) => {
+                const dayName = headers[j] || '';
                 const cell = $(dayCell);
                 if (cell.text().trim() === '') {
                     schedule.push({
-                        day: headers[j]?.day || '',
-                        date: headers[j]?.date || '',
+                        day: dayName,
+                        date: dateMap[dayName] || '',
                         time: time,
                         name: 'Окно',
                         isEmpty: true,
@@ -176,7 +197,7 @@ app.post('/api/schedule', async (req, res) => {
                         });
 
                         const lesson = {
-                            day: headers[j]?.day || 'Unknown', date: headers[j]?.date || '', time: time,
+                            day: dayName, date: dateMap[dayName] || '', time: time,
                             name: lessonCell.find('b').first().text().trim(),
                             fullName: lessonCell.find('b').parent().attr('title')?.trim() || '',
                             type: lessonType,
@@ -198,7 +219,7 @@ app.post('/api/schedule', async (req, res) => {
                     });
                     
                     const lesson = {
-                        day: headers[j]?.day || 'Unknown', date: headers[j]?.date || '', time: time,
+                        day: dayName, date: dateMap[dayName] || '', time: time,
                         name: cell.find('b').first().text().trim(),
                         fullName: cell.find('b').parent().attr('title')?.trim() || '',
                         type: lessonType,

@@ -1,6 +1,6 @@
 // src/pages/SchedulePage.jsx
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaChalkboardTeacher, FaMapMarkerAlt, FaClock, FaArrowLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -22,6 +22,16 @@ function SchedulePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const dayOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+
+
+    const formattedToday = useMemo(() => {
+        const today = new Date();
+        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const year = today.getFullYear();
+        return `${day}.${month}.${year}`;
+    }, []);
+
 
     const openModal = (timeSlot) => {
         setSelectedTimeSlot(timeSlot);
@@ -87,15 +97,10 @@ function SchedulePage() {
                     setSchedule(finalSchedule);
 
                     setTimeout(() => {
-                        const today = new Date();
-                        const day = String(today.getDate()).padStart(2, '0');
-                        const month = String(today.getMonth() + 1).padStart(2, '0');
-                        const year = today.getFullYear();
-                        const formattedToday = `${day}.${month}.${year}`;
-
                         let todayDayName = null;
-
+                        
                         for (const [dayName, dayData] of Object.entries(finalSchedule)) {
+                            
                             if (dayData[0]?.lessons[0]?.date === formattedToday) {
                                 todayDayName = dayName;
                                 break;
@@ -122,7 +127,7 @@ function SchedulePage() {
             }
         };
         fetchSchedule();
-    }, [facultyId, groupId, week]);
+    }, [facultyId, groupId, week, formattedToday]);
 
     const handlePrevWeek = () => {
         const currentWeekNumber = parseInt(week || getWeekNumber(new Date()), 10);
@@ -159,49 +164,52 @@ function SchedulePage() {
                     {Object.keys(schedule)
                       .filter(day => schedule[day].length > 0)
                       .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
-                      .map(day => (
-                        <div key={day} className="day-column" ref={(el) => (dayRefs.current[day] = el)}>
-                          <div className="day-header">
-                            <h2>{day}</h2>
-                            <p className="date">{schedule[day][0]?.lessons[0]?.date || ' '}</p>
+                      .map(day => {
+                        const isToday = schedule[day][0]?.lessons[0]?.date === formattedToday;
+                        return (
+                          <div key={day} className={`day-column ${isToday ? 'is-today' : ''}`} ref={(el) => (dayRefs.current[day] = el)}>
+                            <div className="day-header">
+                              <h2>{day}</h2>
+                              <p className="date">{schedule[day][0]?.lessons[0]?.date || ' '}</p>
+                            </div>
+                            {schedule[day].map((timeSlot, index) => (
+                                <div key={index} className={`timeslot-wrapper ${timeSlot.lessons.length > 1 ? 'is-choice' : ''}`}>
+                                <p className="time"><FaClock /> {timeSlot.time}</p>
+                                
+                                {timeSlot.lessons.map((lesson, lessonIndex) => (
+                                  lesson.isEmpty ? (
+                                      <div key={lessonIndex} className="lesson-card empty-lesson">
+                                          <p>Окно</p>
+                                      </div>
+                                  ) : (
+                                      <div key={lessonIndex} className="lesson-card choice-lesson" onClick={() => openModal(timeSlot)}>
+                                        <div className="lesson-info" title={lesson.fullName}>
+                                          <h3 className="lesson-name">{lesson.name}</h3>
+                                          {lesson.type && <p className="lesson-type">{lesson.type}</p>}
+                                        </div>
+                                        <div className="lesson-details">
+                                          {lesson.subgroups.map((sub, subIndex) => (
+                                            <div key={subIndex} className="subgroup-info">
+                                              <p className="teacher">
+                                                <FaChalkboardTeacher />
+                                                {sub.teacherShort || 'Не указан'}
+                                              </p>
+                                              <p className="room">
+                                                <FaMapMarkerAlt />
+                                                {sub.subgroupNumber && `(${sub.subgroupNumber}) `}
+                                                {sub.room || 'Не указана'}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                  )
+                                ))}
+                                </div>
+                            ))}
                           </div>
-                          {schedule[day].map((timeSlot, index) => (
-                              <div key={index} className={`timeslot-wrapper ${timeSlot.lessons.length > 1 ? 'is-choice' : ''}`}>
-                              <p className="time"><FaClock /> {timeSlot.time}</p>
-                              
-                              {timeSlot.lessons.map((lesson, lessonIndex) => (
-                                lesson.isEmpty ? (
-                                    <div key={lessonIndex} className="lesson-card empty-lesson">
-                                        <p>Окно</p>
-                                    </div>
-                                ) : (
-                                    <div key={lessonIndex} className="lesson-card choice-lesson" onClick={() => openModal(timeSlot)}>
-                                      <div className="lesson-info" title={lesson.fullName}>
-                                        <h3 className="lesson-name">{lesson.name}</h3>
-                                        {lesson.type && <p className="lesson-type">{lesson.type}</p>}
-                                      </div>
-                                      <div className="lesson-details">
-                                        {lesson.subgroups.map((sub, subIndex) => (
-                                          <div key={subIndex} className="subgroup-info">
-                                            <p className="teacher">
-                                              <FaChalkboardTeacher />
-                                              {sub.teacherShort || 'Не указан'}
-                                            </p>
-                                            <p className="room">
-                                              <FaMapMarkerAlt />
-                                              {sub.subgroupNumber && `(${sub.subgroupNumber}) `}
-                                              {sub.room || 'Не указана'}
-                                            </p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                )
-                              ))}
-                              </div>
-                          ))}
-                        </div>
-                    ))}
+                        
+                        )})}
                 </div>
             )}
           <Modal 
