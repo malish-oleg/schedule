@@ -51,7 +51,7 @@ function HomePage() {
   const handleShowSchedule = () => {
     if (selectedFaculty && selectedGroup) {
       const currentWeek = getWeekNumber(new Date());
-      navigate(`/schedule/${selectedFaculty}/${selectedGroup}/${currentWeek}`);
+      navigate(`/schedule/${selectedFaculty}/${selectedGroup}`);
     }
   };
 
