@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // Строка '/api' будет заменена на 'http://localhost:3001'
       '/api': {
-        target: 'http://212.22.82.45:3001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

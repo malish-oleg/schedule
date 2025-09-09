@@ -1,6 +1,6 @@
 // src/pages/SchedulePage.jsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaChalkboardTeacher, FaMapMarkerAlt, FaClock, FaArrowLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -10,6 +10,7 @@ function SchedulePage() {
     // `week` теперь может быть undefined, если его нет в URL
     const { facultyId, groupId, week } = useParams();
     const navigate = useNavigate();
+    const dayRefs = useRef({});
 
     const [schedule, setSchedule] = useState({});
     const [weekInfo, setWeekInfo] = useState('');
@@ -70,6 +71,30 @@ function SchedulePage() {
                     setError("На выбранной неделе нет занятий.");
                 } else {
                     setSchedule(finalSchedule);
+
+                    setTimeout(() => {
+                        const today = new Date();
+                        const day = String(today.getDate()).padStart(2, '0');
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        const year = today.getFullYear();
+                        const formattedToday = `${day}.${month}.${year}`;
+
+                        let todayDayName = null;
+
+                        for (const [dayName, dayData] of Object.entries(finalSchedule)) {
+                            if (dayData[0]?.lessons[0]?.date === formattedToday) {
+                                todayDayName = dayName;
+                                break;
+                            }
+                        }
+
+                        if (todayDayName && dayRefs.current[todayDayName]) {
+                            dayRefs.current[todayDayName].scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        }
+                    }, 100);
                 }
 
             } catch (err) {
@@ -121,7 +146,7 @@ function SchedulePage() {
                       .filter(day => schedule[day].length > 0)
                       .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
                       .map(day => (
-                        <div key={day} className="day-column">
+                        <div key={day} className="day-column" ref={(el) => (dayRefs.current[day] = el)}>
                           <div className="day-header">
                             <h2>{day}</h2>
                             <p className="date">{schedule[day][0]?.lessons[0]?.date || ' '}</p>
