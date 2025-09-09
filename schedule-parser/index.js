@@ -4,7 +4,6 @@ const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
 const cors = require('cors');
 const https = require('https');
-const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = 3001;
@@ -15,15 +14,6 @@ app.use(express.json());
 const httpsAgent = new https.Agent({
     rejectUnauthorized: false,
 });
-
-const limiter = rateLimit({
-	windowMs: 10 * 60 * 1000, // 10 минут
-	max: 100, // Позволяет 100 запросов с одного IP за 15 минут
-	standardHeaders: true,
-	legacyHeaders: false,
-    message: 'Слишком много запросов с этого IP, попробуйте снова через 10 минут',
-});
-app.use('/api', limiter);
 
 const BASE_URL = 'https://is.agni-rt.ru/index.php?type=1&page=student_schedule_lessons';
 const AXIOS_CONFIG = {
