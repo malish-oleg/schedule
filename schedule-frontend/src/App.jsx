@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SchedulePage from './pages/SchedulePage';
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import './App.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         </Routes>
       </div>
       <Analytics />
+      < SpeedInsights />
     </BrowserRouter>
   );
 }
