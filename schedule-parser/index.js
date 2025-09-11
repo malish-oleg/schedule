@@ -52,7 +52,7 @@ app.get('/api/faculties', async (req, res) => {
 
         if (faculties.length === 0) {
             console.error("Парсер не смог найти факультеты с исправленным регулярным выражением.");
-            require('fs').writeFileSync('debug_faculties_final_attempt.html', html); // На всякий случай
+            require('fs').writeFileSync('debug_faculties_final_attempt.html', html);
             return res.status(404).json({ error: 'Could not find any faculties on the page.' });
         }
 

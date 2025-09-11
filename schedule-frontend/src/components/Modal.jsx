@@ -1,8 +1,6 @@
-// src/components/Modal.jsx
-
 import React from 'react';
 import { FaTimes, FaClock, FaChalkboardTeacher, FaMapMarkerAlt } from 'react-icons/fa';
-import './Modal.css'; // Стили для модалки
+import './Modal.css';
 
 function Modal({ isOpen, onClose, timeSlot }) {
     if (!isOpen || !timeSlot) return null;
