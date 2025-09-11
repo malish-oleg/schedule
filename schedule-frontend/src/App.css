@@ -1,328 +1,164 @@
+/* src/App.css */
+
+/* 1. ПЕРЕМЕННЫЕ ДЛЯ ТЕМ */
 :root {
   --font-main: 'Manrope', sans-serif;
-
-  --color-bg: #121212;
-  --color-surface: #1E1E1E;
-  --color-primary: #BB86FC;
-  --color-primary-variant: #3700B3;
-  --color-secondary: #03DAC6;
-  --color-text-primary: #E1E1E1;
-  --color-text-secondary: #A0A0A0;
-  --color-border: #2F2F2F;
+  --border-radius-main: 1.5rem; /* 24px */
+  --border-radius-subtle: 0.75rem; /* 12px */
+  --shadow-main: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
 }
 
+/* 2. СВЕТЛАЯ ТЕМА (по умолчанию) */
+:root, [data-theme='light'] {
+  --color-bg: #FDF7F5;
+  --color-surface: #FFFFFF;
+  --color-primary: #D75387;
+  --color-primary-soft: #FCE8EF;
+  --color-secondary: #F6A342;
+  --color-text-primary: #1C1C28;
+  --color-text-secondary: #A0A0B0;
+  --color-border: #F0E8E6;
+  --color-timeline: #EAEAEA;
+}
+
+/* 3. ТЕМНАЯ ТЕМА */
+[data-theme='dark'] {
+  --color-bg: #121212;
+  --color-surface: #1E1E1E;
+  --color-primary: #E985AE;
+  --color-primary-soft: #3A2A33;
+  --color-secondary: #F6BE7C;
+  --color-text-primary: #E1E1E1;
+  --color-text-secondary: #A0A0B0;
+  --color-border: #2F2F2F;
+  --color-timeline: #333333;
+}
+
+/* 4. ГЛОБАЛЬНЫЕ СТИЛИ */
 body {
   font-family: var(--font-main);
   background-color: var(--color-bg);
   color: var(--color-text-primary);
+  transition: background-color 0.3s, color 0.3s;
   margin: 0;
+  /* Предотвращаем "прыжок" скроллбара */
+  overflow-y: scroll; 
+}
+
+/* ===== 5. ОСНОВНОЙ МАКЕТ НА CSS GRID ===== */
+
+.app-container {
+  display: flex;
+  gap: 1.5rem;
   padding: 1.5rem;
+  height: 100vh;
+  box-sizing: border-box;
+  /* ВАЖНО: Предотвращаем "выталкивание" макета */
+  overflow-x: hidden;
 }
 
-.container {
-  max-width: 1600px;
-  margin: 0 auto;
+/* Явно размещаем элементы в сетке */
+.sidebar {
+  flex-shrink: 0; /* Запрещаем сжиматься */
+  width: 250px;
 }
-
-h1 {
-  text-align: center;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: 2rem;
-}
-
-.schedule-container {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 768px) {
-  .schedule-container {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  }
-}
-@media (min-width: 1400px) {
-  .schedule-container {
-     grid-auto-flow: column;
-     grid-auto-columns: 1fr;
-  }
-}
-
-.empty-lesson {
-  background-color: transparent;
-  border: 2px dashed var(--color-border);
-  text-align: center;
-  color: var(--color-text-secondary);
-  padding: 1rem;
-  border-radius: 8px;
-  border-left: 2px dashed var(--color-border); 
-  box-shadow: none;
-  transform: none !important;
-}
-
-.empty-lesson:hover {
-  border-left-color: var(--color-border);
-}
-
-.day-column {
-  background-color: var(--color-surface);
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.day-column.is-today {
-  border: 2px solid var(--color-secondary); 
-  background-color: #222; 
-}
-.day-column.is-today .day-header h2 {
-  color: var(--color-secondary);
-  font-weight: 700;
-}
-
-.day-header {
-  text-align: center;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.day-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.day-header .date {
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-}
-
-.choice-lesson + .choice-lesson {
-  border-top: 1px dashed var(--color-border);
-  margin-top: 1rem;
-  padding-top: 1rem;
-}
-
-.schedule-title-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.nav-arrow {
-  background: none;
-  border: none;
-  color: var(--color-secondary);
-  font-size: 2rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s, color 0.2s;
-}
-
-.nav-arrow:hover {
-  background-color: rgba(3, 218, 198, 0.1);
-  color: white;
-}
-
-.schedule-header {
-  margin: 0;
-}
-
-.timeslot-wrapper {
-  background-color: var(--color-border);
-  border-radius: 8px;
-  padding: 1rem;
-  border-left: 4px solid var(--color-primary);
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.timeslot-wrapper:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-  border-left-color: var(--color-secondary);
-}
-
-.lesson-card p {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.timeslot-wrapper.is-choice {
-  border-left-style: dashed;
-  border-left-width: 4px;
-  border-left-color: #f39c12;
-}
-
-.timeslot-wrapper.is-choice:hover {
-  border-left-color: #e67e22;
-}
-
-.timeslot-wrapper .time {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--color-secondary);
-  margin-bottom: 0.5rem;
-}
-
-.lesson-card .name {
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-}
-
-.lesson-card .name span {
-  font-weight: 400;
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-}
-
-.lesson-main-info {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.lesson-name {
-  font-weight: 600;
-  font-size: 1.2rem;
-  line-height: 1.4;
-  margin: 0 0 0.25rem 0;
-  overflow-wrap: break-word;
-}
-
-.lesson-type {
-  font-weight: 400;
-  color: var(--color-text-secondary);
-  font-size: 1rem;
-}
-
-.lesson-details {
-  font-size: 0.95rem;
-  color: var(--color-text-secondary);
-  padding-top: 0.75rem;
-  border-top: 1px dashed var(--color-border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.subgroup-info + .subgroup-info {
-  border-top: 1px dotted rgba(255, 255, 255, 0.1);
-  padding-top: 0.5rem;
-}
-
-
-.no-lessons-card {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 150px;
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 1rem;
-  border-radius: 8px;
-  background-color: rgba(0,0,0,0.1);
-}
-
-.form-container {
-  max-width: 500px;
-  margin: 5rem auto;
-  padding: 2rem;
-  background-color: var(--color-surface);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.select-wrapper select {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: var(--font-main);
-  cursor: pointer;
-}
-
-.form-container button {
-  padding: 0.9rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--color-primary);
-  color: #fff;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.form-container button:hover:not(:disabled) {
-  background-color: var(--color-primary-variant);
-}
-
-.form-container button:disabled {
-  background-color: var(--color-border);
-  cursor: not-allowed;
-}
-
-.back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--color-secondary);
-    text-decoration: none;
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
-}
-
-.schedule-title {
-  text-align: center;
-}
-
-.group-name {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
-}
-
-.schedule-header {
-  margin-top: 0.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.week-info {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--color-text-secondary);
-}
-
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
 .main-content {
-  flex-grow: 1;
+  flex-grow: 1; /* Занимает все доступное место */
+  display: flex;
+  /* КЛЮЧЕВОЙ ФИКС: Позволяет сжиматься меньше своего контента */
+  min-width: 0; 
+}
+.right-panel {
+  flex-shrink: 0; /* Запрещаем сжиматься */
+  width: 320px;
+}
+
+.schedule-view {
+  width: 100%; /* Занимает всю ширину .main-content */
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-main);
+  padding: 2rem;
+  box-shadow: var(--shadow-main);
+  display: flex;
+  flex-direction: column;
+  overflow: auto; /* Весь скролл теперь здесь */
+}
+
+/* Стили для дочерних элементов (не менялись, но важны для контекста) */
+.sidebar, .right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.sidebar {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-main);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-main);
+}
+.calendar-widget {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-main);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-main);
+}
+
+
+/* 6. АДАПТИВНОСТЬ МАКЕТА */
+@media (max-width: 1200px) {
+  .app-container {
+    /* На планшетах убираем колонку для right-panel */
+    grid-template-columns: 250px 1fr;
+    /* Убираем правый gap, так как панели больше нет */
+    gap: 1.5rem;
+    padding-top: 5rem;
+  }
+
+  /* Сразу прячем панель за экраном */
+  .right-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    z-index: 102;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .app-container.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+  .app-container.right-panel-open .right-panel {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding-top: 5rem; /* Отступ для хедера */
+  }
+  .sidebar, .right-panel {
+    position: fixed; /* Вырываем из потока */
+    top: 0;
+    height: 100%;
+    z-index: 102;
+    transition: transform 0.3s ease-in-out;
+  }
+  .sidebar {
+    left: 0;
+    transform: translateX(-100%);
+    box-shadow: 0 0 40px rgba(0,0,0,0.2);
+  }
+  .right-panel {
+    right: 0px;
+    transform: translateX(100%);
+  }
+  
+  /* Классы для открытия */
+  .app-container.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+  .app-container.right-panel-open .right-panel {
+    transform: translateX(0);
+  }
 }

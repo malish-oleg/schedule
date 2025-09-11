@@ -1,28 +1,34 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+// src/App.jsx
+
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SchedulePage from './pages/SchedulePage';
-import { Analytics } from "@vercel/analytics/react";
 import Footer from './components/Footer';
 import './App.css';
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="app-layout">
-        <main className="main-content">
-          <div className="container">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              
-              <Route path="/schedule/:facultyId/:groupId/:week?" element={<SchedulePage />} />
-            </Routes>
-          </div>
-        </main>
-        <Footer />
-      </div>
-      <Analytics />
+      {/* Убираем .app-layout и .main-content отсюда */}
+      <Routes>
+        {/* HomePage будет без основного макета, это нормально */}
+        <Route path="/" element={<HomePage />} /> 
+        
+        {/* А вот SchedulePage будет рендерить весь макет */}
+        <Route path="/schedule/:facultyId/:groupId/:year/:month/:day" element={<SchedulePage />} />
+        <Route path="/schedule/:facultyId/:groupId" element={<ScheduleRedirector />} />
+      </Routes>
     </BrowserRouter>
   );
+}
+
+function ScheduleRedirector() {
+  const { facultyId, groupId } = useParams();
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  return <Navigate to={`/schedule/${facultyId}/${groupId}/${year}/${month}/${day}`} replace />;
 }
 
 export default App;

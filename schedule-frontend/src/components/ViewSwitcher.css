@@ -1,0 +1,36 @@
+/* src/components/ViewSwitcher.css */
+
+.view-switcher {
+  display: flex;
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-main);
+  padding: 0.5rem;
+  box-shadow: var(--shadow-main);
+  border: 1px solid var(--color-border);
+}
+
+.view-button {
+  flex: 1; /* Кнопки занимают равное пространство */
+  background-color: transparent;
+  border: none;
+  padding: 0.75rem;
+  border-radius: var(--border-radius-subtle);
+  color: var(--color-text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.view-button:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.view-button.active {
+  background-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 15px -5px var(--color-primary);
+}

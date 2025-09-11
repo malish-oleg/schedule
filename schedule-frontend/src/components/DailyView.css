@@ -1,0 +1,154 @@
+/* src/components/DailyView.css */
+
+.daily-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.daily-header {
+    margin-bottom: 2rem;
+    flex-shrink: 0;
+}
+.daily-header h3 {
+    text-transform: capitalize;
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+.daily-header h2 {
+    font-size: 1.8rem;
+    margin: 0.25rem 0 0 0;
+}
+
+.timeline-wrapper {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding-right: 0.5rem;
+}
+
+.timeline {
+    position: relative;
+    /* УБИРАЕМ padding-top: 1rem; */
+    min-height: 1120px; /* 14 часов * 80px */
+}
+
+.time-marker {
+    display: flex;
+    align-items: flex-start;
+    height: 80px;
+    
+    /* Делаем метки абсолютно спозиционированными */
+    position: absolute;
+    width: 100%;
+    left: 0;
+}
+.time-marker .hour-label {
+    width: 50px;
+    text-align: right;
+    padding-right: 10px;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    /* Убираем transform, он больше не нужен */
+}
+.time-marker .line {
+    flex-grow: 1;
+    height: 1px;
+    background-color: var(--color-timeline);
+    
+}
+
+.lessons-container {
+    position: absolute;
+    top: 0; /* Начинается от самого верха */
+    left: 60px; /* Отступ для временных меток */
+    right: 0;
+    bottom: 0;
+}
+
+.daily-lesson {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--border-radius-subtle);
+    font-size: 0.85rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.daily-lesson:hover {
+    transform: scale(1.02);
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.daily-lesson.is-choice {
+    background-color: #fef4e6;
+    color: #F6A342;
+    border-left-color: #F6A342;
+}
+[data-theme='dark'] .daily-lesson.is-choice {
+    background-color: #3e3224;
+}
+
+.daily-lesson .lesson-name {
+    margin-top: 0.5rem;
+    margin-left: 0.5rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.daily-lesson .lesson-details {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+.daily-lesson .lesson-sub-details {
+    margin-left: 0.5rem;
+    margin-bottom: 0.5rem;
+    margin-top: auto;
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+.lesson-sub-details span {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Стили для индикатора текущего времени */
+.current-time-indicator {
+    position: absolute;
+    /* Учитываем padding-left контейнера */
+    left: 0; 
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+.current-time-indicator .time-dot {
+    width: 12px;
+    height: 12px;
+    background-color: #EA4335;
+    border-radius: 50%;
+    border: 2px solid var(--color-surface);
+    flex-shrink: 0;
+    z-index: 11;
+    /* Смещаем точку влево, чтобы она была на линии */
+    transform: translateX(-50%); 
+}
+.current-time-indicator .time-line {
+    width: 100%;
+    height: 2px;
+    background-color: #EA4335;
+}

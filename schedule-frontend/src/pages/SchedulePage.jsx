@@ -1,217 +1,252 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+// src/pages/SchedulePage.jsx
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { FaChalkboardTeacher, FaMapMarkerAlt, FaClock, FaArrowLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { getWeekNumber } from '../utils/dateUtils';
+import Sidebar from '../components/Sidebar';
+import CalendarPicker from '../components/CalendarPicker';
+import DailyView from '../components/DailyView';
 import Modal from '../components/Modal';
+import { calculateTopPosition } from '../components/CurrentTimeIndicator';
+import ViewSwitcher from '../components/ViewSwitcher';
+import WeeklyView from '../components/WeeklyView';
+import TableView from '../components/TableView';
+import Header from '../components/Header'; // <-- Импортируем хедер
+import Overlay from '../components/Overlay';
+import ActionButtons from '../components/ActionButtons';
+
+// Утилита для получения номера недели из даты (ISO 8601 стандарт)
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
 
 function SchedulePage() {
-    const { facultyId, groupId, week } = useParams();
-    const navigate = useNavigate();
-    const dayRefs = useRef({});
+    const { facultyId, groupId, year, month, day } = useParams();
+    const selectedDate = useMemo(() => new Date(year, month - 1, day), [year, month, day]);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
+    const timelineWrapperRef = useRef(null); 
 
-    const [schedule, setSchedule] = useState({});
-    const [weekInfo, setWeekInfo] = useState('');
+    const [weekSchedule, setWeekSchedule] = useState(null);
     const [groupName, setGroupName] = useState('');
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const dayOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+    const [view, setView] = useState('daily'); // Для будущего переключения на недельный вид
 
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedLesson, setSelectedLesson] = useState(null);
 
-    const formattedToday = useMemo(() => {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+
+    useEffect(() => {
+        const weekToFetch = getWeekNumber(selectedDate);
+        
+        const fetchWeekData = async () => {
+            setLoading(true);
+            try {
+                // Параллельно запрашиваем имя группы и расписание
+                const groupPromise = axios.get(`${import.meta.env.VITE_API_URL}/api/groups/${facultyId}`);
+                const schedulePromise = axios.post(`${import.meta.env.VITE_API_URL}/api/schedule`, {
+                    faculty_id: facultyId,
+                    group_id: groupId,
+                    year_week_number: weekToFetch.toString(),
+                });
+
+                const [groupRes, scheduleRes] = await Promise.all([groupPromise, schedulePromise]);
+
+                // Обрабатываем имя группы
+                const currentGroup = groupRes.data.find(g => g.id === groupId);
+                if (currentGroup) setGroupName(currentGroup.name);
+
+                // Обрабатываем расписание
+                setWeekSchedule(scheduleRes.data.schedule);
+
+            } catch (err) {
+                console.error("Failed to fetch schedule data", err);
+                setWeekSchedule([]); // В случае ошибки ставим пустой массив
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        // Оптимизация: перезапрашиваем данные только если сменилась неделя
+        const currentWeekNumberInState = weekSchedule ? getWeekNumber(new Date(weekSchedule[0]?.date.split('.').reverse().join('-'))) : null;
+        if (weekSchedule === null || currentWeekNumberInState !== weekToFetch) {
+            fetchWeekData();
+        } else {
+             // Если неделя та же, просто выключаем загрузчик (нужно для навигации внутри недели)
+            setLoading(false);
+        }
+
+    }, [facultyId, groupId, selectedDate]);
+    
+    // Фильтруем и подготавливаем расписание на выбранный день
+    const dailySchedule = useMemo(() => {
+        if (!weekSchedule) return [];
+
+        const selectedDateString = `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+        
+        // 1. Группируем все пары на этот день по времени
+        const groupedByTime = weekSchedule
+            .filter(lesson => lesson.date === selectedDateString)
+            .reduce((acc, lesson) => {
+                (acc[lesson.time] = acc[lesson.time] || []).push(lesson);
+                return acc;
+            }, {});
+        
+        // 2. Преобразуем группы в "супер-объекты" для отображения
+        return Object.values(groupedByTime).map(lessonsInSlot => {
+            // Если в это время только одна пара, возвращаем ее как есть
+            if (lessonsInSlot.length === 1) {
+                return lessonsInSlot[0];
+            }
+            
+            // Если в это время несколько пар (дисциплины по выбору)
+            return {
+                isChoice: true,
+                name: 'Дисциплины по выбору',
+                time: lessonsInSlot[0].time, // Время у всех одинаковое
+                type: `${lessonsInSlot.length} ${lessonsInSlot.length > 4 ? 'вариантов' : 'варианта'}`,
+                subgroups: lessonsInSlot.flatMap(l => l.subgroups), // Собираем всех преподавателей
+                // Сохраняем исходный массив пар для модального окна
+                choiceLessons: lessonsInSlot
+            };
+        });
+    }, [weekSchedule, year, month, day]);
+
+    const weeklyScheduleData = useMemo(() => {
+        if (!weekSchedule) return {};
+
+        // 1. Группируем ВСЕ пары недели по дням
+        const groupedByDay = weekSchedule.reduce((acc, lesson) => {
+            (acc[lesson.day] = acc[lesson.day] || []).push(lesson);
+            return acc;
+        }, {});
+
+        // 2. Внутри КАЖДОГО дня группируем по времени и объединяем "выборы"
+        const finalWeeklySchedule = {};
+        for (const day in groupedByDay) {
+            const lessonsForDay = groupedByDay[day];
+            const groupedByTime = lessonsForDay.reduce((acc, lesson) => {
+                (acc[lesson.time] = acc[lesson.time] || []).push(lesson);
+                return acc;
+            }, {});
+
+            finalWeeklySchedule[day] = Object.values(groupedByTime).map(lessonsInSlot => {
+                if (lessonsInSlot.length === 1) {
+                    return lessonsInSlot[0];
+                }
+                return {
+                    isChoice: true,
+                    name: 'Дисциплины по выбору',
+                    time: lessonsInSlot[0].time,
+                    type: `${lessonsInSlot.length} ${lessonsInSlot.length > 4 ? 'вариантов' : 'варианта'}`,
+                    subgroups: lessonsInSlot.flatMap(l => l.subgroups),
+                    choiceLessons: lessonsInSlot
+                };
+            }).sort((a, b) => a.time.localeCompare(b.time)); // Сортируем пары внутри дня
+        }
+
+        return finalWeeklySchedule;
+    }, [weekSchedule]);
+
+    useEffect(() => {
+        // Не делаем ничего, пока данные грузятся ИЛИ если расписание на день пустое
+        if (loading || dailySchedule.length === 0) return;
+
         const today = new Date();
-        const day = String(today.getDate()).padStart(2, '0');
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const year = today.getFullYear();
-        return `${day}.${month}.${year}`;
-    }, []);
+        const isTodayView = selectedDate.getDate() === today.getDate() &&
+                            selectedDate.getMonth() === today.getMonth() &&
+                            selectedDate.getFullYear() === today.getFullYear();
 
-
-    const openModal = (timeSlot) => {
-        setSelectedTimeSlot(timeSlot);
+        // Скроллим, только если это сегодняшний день
+        if (isTodayView && timelineWrapperRef.current) {
+            const topPosition = calculateTopPosition();
+            if (topPosition !== null) {
+                // setTimeout здесь больше не нужен, так как DOM уже обновлен
+                timelineWrapperRef.current.scrollTo({
+                    top: topPosition - (timelineWrapperRef.current.clientHeight / 3),
+                    behavior: 'smooth'
+                });
+            }
+        }
+    // Запускаем этот эффект, когда меняется `dailySchedule` (т.е. данные для дня готовы)
+    }, [dailySchedule, loading, selectedDate]);
+    
+    const openModal = (lesson) => {
+        setSelectedLesson(lesson);
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
-        setSelectedTimeSlot(null);
+        setSelectedLesson(null);
     };
-
-    useEffect(() => {
-        if (!facultyId || !groupId) return;
-
-        const fetchSchedule = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                setGroupName('');
-                setWeekInfo('');
-                setSchedule({});
-
-                const weekToFetch = week || getWeekNumber(new Date());
-
-                const scheduleResponse = await axios.post(`${import.meta.env.VITE_API_URL}/api/schedule`, {
-                    faculty_id: facultyId,
-                    group_id: groupId,
-                    year_week_number: weekToFetch.toString()
-                });
-                
-                const { weekInfo: newWeekInfo, schedule: lessons } = scheduleResponse.data;
-                setWeekInfo(newWeekInfo);
-                
-                try {
-                    const groupsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/groups/${facultyId}`);
-                    const currentGroup = groupsResponse.data.find(g => g.id === groupId);
-                    if (currentGroup) setGroupName(currentGroup.name);
-                } catch (groupError) { console.error("Could not fetch group name", groupError); }
-                
-                const groupedByDay = lessons.reduce((acc, lesson) => {
-                    (acc[lesson.day] = acc[lesson.day] || []).push(lesson);
-                    return acc;
-                }, {});
-
-                const finalSchedule = {};
-                for (const day in groupedByDay) {
-                    const lessonsForDay = groupedByDay[day];
-                    const groupedByTime = lessonsForDay.reduce((acc, lesson) => {
-                        if (!acc[lesson.time]) {
-                            acc[lesson.time] = { time: lesson.time, lessons: [] };
-                        }
-                        acc[lesson.time].lessons.push(lesson);
-                        return acc;
-                    }, {});
-                    finalSchedule[day] = Object.values(groupedByTime).sort((a, b) => a.time.localeCompare(b.time));
-                }
-                
-                if (Object.keys(finalSchedule).length === 0) {
-                    setError("На выбранной неделе нет занятий.");
-                } else {
-                    setSchedule(finalSchedule);
-
-                    setTimeout(() => {
-                        let todayDayName = null;
-                        
-                        for (const [dayName, dayData] of Object.entries(finalSchedule)) {
-                            
-                            if (dayData[0]?.lessons[0]?.date === formattedToday) {
-                                todayDayName = dayName;
-                                break;
-                            }
-                        }
-
-                        if (todayDayName && dayRefs.current[todayDayName]) {
-                            dayRefs.current[todayDayName].scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-                        }
-                    }, 100);
-                }
-
-            } catch (err) {
-                if (err.response && err.response.status === 404) {
-                    setError("Расписание для данной группы не найдено.");
-                } else {
-                    setError("На выбранной неделе нет занятий.");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchSchedule();
-    }, [facultyId, groupId, week, formattedToday]);
-
-    const handlePrevWeek = () => {
-        const currentWeekNumber = parseInt(week || getWeekNumber(new Date()), 10);
-        const prevWeek = currentWeekNumber - 1;
-        navigate(`/schedule/${facultyId}/${groupId}/${prevWeek}`);
-    };
-
-    const handleNextWeek = () => {
-        const currentWeekNumber = parseInt(week || getWeekNumber(new Date()), 10);
-        const nextWeek = currentWeekNumber + 1;
-        navigate(`/schedule/${facultyId}/${groupId}/${nextWeek}`);
-    };
-    
-    if (loading) return <div className="container"><h1>Загрузка...</h1></div>;
 
     return (
         <>
-            <Link to="/" className="back-link"><FaArrowLeft /> Назад к выбору группы</Link>
             
-            <div className="schedule-title-container">
-                <button onClick={handlePrevWeek} className="nav-arrow"><FaChevronLeft /></button>
-                <div className="schedule-title">
-                    <h2 className="group-name">Группа {groupName || groupId}</h2>
-                    <h1 className="schedule-header">Расписание</h1>
-                    {weekInfo && <p className="week-info">{weekInfo}</p>}
-                </div>
-                <button onClick={handleNextWeek} className="nav-arrow"><FaChevronRight /></button>
-            </div>
-            
-            {error ? (
-                <div className="no-lessons-card full-page-card"><h1>{error}</h1></div>
-            ) : (
-                <div className="schedule-container">
-                    {Object.keys(schedule)
-                      .filter(day => schedule[day].length > 0)
-                      .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
-                      .map(day => {
-                        const isToday = schedule[day][0]?.lessons[0]?.date === formattedToday;
-                        return (
-                          <div key={day} className={`day-column ${isToday ? 'is-today' : ''}`} ref={(el) => (dayRefs.current[day] = el)}>
-                            <div className="day-header">
-                              <h2>{day}</h2>
-                              <p className="date">{schedule[day][0]?.lessons[0]?.date || ' '}</p>
+            <Header 
+                onToggleSidebar={() => setIsSidebarOpen(true)}
+                onToggleRightPanel={() => setIsRightPanelOpen(true)}
+                groupName={groupName}
+            />
+            <div 
+                className={`
+                    app-container 
+                    ${isSidebarOpen ? 'sidebar-open' : ''} 
+                    ${isRightPanelOpen ? 'right-panel-open' : ''}
+                `}
+            >
+                <Sidebar groupName={groupName} />
+                <Overlay isActive={isSidebarOpen || isRightPanelOpen} onClick={() => { setIsSidebarOpen(false); setIsRightPanelOpen(false); }} />
+                
+                <main className="main-content">
+                    <div className="schedule-view">
+                        {loading ? (
+                            <div className="loading-placeholder">
+                                <p>Загрузка расписания...</p>
                             </div>
-                            {schedule[day].map((timeSlot, index) => (
-                                <div key={index} className={`timeslot-wrapper ${timeSlot.lessons.length > 1 ? 'is-choice' : ''}`}>
-                                <p className="time"><FaClock /> {timeSlot.time}</p>
-                                
-                                {timeSlot.lessons.map((lesson, lessonIndex) => (
-                                  lesson.isEmpty ? (
-                                      <div key={lessonIndex} className="lesson-card empty-lesson">
-                                          <p>Окно</p>
-                                      </div>
-                                  ) : (
-                                      <div key={lessonIndex} className="lesson-card choice-lesson" onClick={() => openModal(timeSlot)}>
-                                        <div className="lesson-info" title={lesson.fullName}>
-                                          <h3 className="lesson-name">{lesson.name}</h3>
-                                          {lesson.type && <p className="lesson-type">{lesson.type}</p>}
-                                        </div>
-                                        <div className="lesson-details">
-                                          {lesson.subgroups.map((sub, subIndex) => (
-                                            <div key={subIndex} className="subgroup-info">
-                                              <p className="teacher">
-                                                <FaChalkboardTeacher />
-                                                {sub.teacherShort || 'Не указан'}
-                                              </p>
-                                              <p className="room">
-                                                <FaMapMarkerAlt />
-                                                {sub.subgroupNumber && `(${sub.subgroupNumber}) `}
-                                                {sub.room || 'Не указана'}
-                                              </p>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                  )
-                                ))}
-                                </div>
-                            ))}
-                          </div>
-                        
-                        )})}
-                </div>
-            )}
-          <Modal 
-              isOpen={isModalOpen} 
-              onClose={closeModal} 
-              timeSlot={selectedTimeSlot} 
-          />
+                        ) : (
+                            <>
+                                {view === 'daily' && (
+                                    <DailyView 
+                                        schedule={dailySchedule} 
+                                        date={selectedDate}
+                                        onLessonClick={openModal}
+                                        timelineRef={timelineWrapperRef}
+                                    />
+                                )}
+                                {view === 'weekly' && (
+                                    <WeeklyView 
+                                        scheduleByDay={weeklyScheduleData}
+                                        onLessonClick={openModal} 
+                                    />
+                                )}
+                                {view === 'table' && (
+                                    <TableView 
+                                        weekSchedule={weekSchedule} // Передаем сырые данные
+                                        onLessonClick={openModal} // openModal уже умеет работать с этим
+                                    />
+                                )}
+                            </>
+                        )}
+                    </div>
+                </main>
+                <aside className="right-panel">
+                    <ViewSwitcher view={view} setView={setView} />
+                    <CalendarPicker selectedDate={selectedDate} view={view} />
+                    <ActionButtons />
+                </aside>
+                <Modal 
+                    isOpen={isModalOpen}
+                    onClose={closeModal}
+                    lessonData={selectedLesson}
+                />
+            </div>
         </>
     );
 }

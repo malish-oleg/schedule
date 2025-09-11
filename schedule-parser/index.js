@@ -27,6 +27,59 @@ const AXIOS_CONFIG = {
     responseType: 'arraybuffer',
 };
 
+app.get('/api/all-groups', async (req, res) => {
+    console.log(`[${new Date().toISOString()}] GET /api/all-groups`);
+    try {
+        // 1. Сначала получаем все факультеты
+        const facultyResponse = await axios.get(BASE_URL, AXIOS_CONFIG);
+        const facultyHtml = iconv.decode(Buffer.from(facultyResponse.data), 'win1251');
+        const $f = cheerio.load(facultyHtml);
+
+        const faculties = [];
+        $f('a[href*="sp_student.faculty_id.value"]').each((i, element) => {
+            const hrefAttr = $f(element).attr('href');
+            if (hrefAttr) {
+                const idMatch = hrefAttr.match(/faculty_id\.value='(\d+)'/);
+                if (idMatch && idMatch[1]) {
+                    faculties.push({ id: idMatch[1], name: $f(element).find('div').text().trim() });
+                }
+            }
+        });
+
+        // 2. Для каждого факультета запрашиваем его группы
+        let allGroups = [];
+        // Используем Promise.all для параллельного выполнения запросов - это быстро!
+        await Promise.all(faculties.map(async (faculty) => {
+            const formData = new URLSearchParams();
+            formData.append('faculty_id', faculty.id);
+            const groupResponse = await axios.post(BASE_URL, formData, AXIOS_CONFIG);
+            const groupHtml = iconv.decode(Buffer.from(groupResponse.data), 'win1251');
+            const $g = cheerio.load(groupHtml);
+
+            $g('a[href*="sp_student.group_id.value"]').each((j, a) => {
+                const hrefAttr = $g(a).attr('href');
+                if (hrefAttr) {
+                    const idMatch = hrefAttr.match(/group_id\.value='(\d+)'/);
+                    if (idMatch && idMatch[1]) {
+                        allGroups.push({
+                            id: idMatch[1],
+                            name: $g(a).text().trim(),
+                            facultyId: faculty.id, // Добавляем ID факультета
+                            facultyName: faculty.name // И его имя для контекста
+                        });
+                    }
+                }
+            });
+        }));
+
+        res.json(allGroups);
+
+    } catch (error) {
+        console.error('Error fetching all groups:', error.message);
+        res.status(500).json({ error: 'Failed to fetch all groups' });
+    }
+});
+
 app.get('/api/faculties', async (req, res) => {
     try {
         const response = await axios.get(BASE_URL, AXIOS_CONFIG);

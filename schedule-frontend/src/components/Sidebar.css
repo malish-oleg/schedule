@@ -1,0 +1,96 @@
+/* src/components/Sidebar.css */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.profile-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.profile-info h3, .profile-info h4 {
+    margin: 0;
+    line-height: 1.2;
+}
+.profile-info h4 {
+    color: var(--color-text-secondary);
+    font-weight: 400;
+    font-size: 0.9rem;
+}
+.profile-info h3 {
+    font-weight: 600;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    border-radius: var(--border-radius-subtle);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-item:hover {
+    color: var(--color-text-primary);
+}
+
+.nav-item.active {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.sidebar-footer {
+    margin-top: auto; /* Прижимает переключатель тем к низу */
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: center;
+}
+
+.profile-link {
+    text-decoration: none;
+    color: inherit; /* Наследует цвет текста от родителя */
+    border-radius: var(--border-radius-main); /* Добавляем скругление для области hover-эффекта */
+    transition: background-color 0.2s ease-in-out;
+    /* Отрицательные margin'ы, чтобы эффект занимал всю ширину с учетом padding'ов родителя */
+    margin: -1rem -1rem 0 -1rem; 
+}
+
+/* Добавляем отступ обратно для самого блока, чтобы он был на месте */
+.profile-link .profile-section {
+    padding: 1rem 1rem 1.5rem 1rem;
+    margin-bottom: 0; /* Убираем старый margin-bottom */
+}
+
+/* Эффект при наведении */
+.profile-link:hover {
+    background-color: var(--color-bg);
+}
