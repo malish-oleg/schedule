@@ -47,118 +47,70 @@ body {
 
 /* ===== 5. ОСНОВНОЙ МАКЕТ НА CSS GRID ===== */
 
+/* src/App.css */
+
+/* ===== 5. ОСНОВНОЙ МАКЕТ (ФИНАЛЬНАЯ ВЕРСИЯ) ===== */
+
 .app-container {
   display: flex;
-  gap: 1.5rem;
-  padding: 1.5rem;
   height: 100vh;
   box-sizing: border-box;
-  /* ВАЖНО: Предотвращаем "выталкивание" макета */
-  overflow-x: hidden;
+  /* Добавляем отступ сверху, равный высоте хедера */
+  padding-top: 5rem;
 }
 
-/* Явно размещаем элементы в сетке */
+/* Боковые панели теперь position: fixed и по умолчанию за экраном */
+.sidebar, .right-panel {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    z-index: 102; /* Выше оверлея и хедера */
+    box-shadow: 0 0 40px rgba(0,0,0,0.2);
+    background-color: var(--color-bg);
+    transition: transform 0.3s ease-in-out;
+    padding-top: 5rem; /* Отступ, чтобы контент не залезал под хедер */
+    box-sizing: border-box;
+}
+
 .sidebar {
-  flex-shrink: 0; /* Запрещаем сжиматься */
   width: 250px;
+  left: 0;
+  transform: translateX(-100%);
 }
-.main-content {
-  flex-grow: 1; /* Занимает все доступное место */
-  display: flex;
-  /* КЛЮЧЕВОЙ ФИКС: Позволяет сжиматься меньше своего контента */
-  min-width: 0; 
-}
+
 .right-panel {
-  flex-shrink: 0; /* Запрещаем сжиматься */
   width: 320px;
+  right: 0;
+  transform: translateX(100%);
+}
+
+/* Классы для открытия панелей */
+.app-container.sidebar-open .sidebar,
+.app-container.right-panel-open .right-panel {
+    transform: translateX(0);
+}
+
+.main-content {
+  flex-grow: 1; /* Занимает все доступное пространство */
+  display: flex;
+  min-width: 0;
+  /* Добавляем padding, который раньше был у app-container */
+  padding: 0 1.5rem 1.5rem 1.5rem;
 }
 
 .schedule-view {
-  width: 100%; /* Занимает всю ширину .main-content */
+  width: 100%;
   background-color: var(--color-surface);
   border-radius: var(--border-radius-main);
   padding: 2rem;
   box-shadow: var(--shadow-main);
   display: flex;
   flex-direction: column;
-  overflow: auto; /* Весь скролл теперь здесь */
-}
-
-/* Стили для дочерних элементов (не менялись, но важны для контекста) */
-.sidebar, .right-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-.sidebar {
-  background-color: var(--color-surface);
-  border-radius: var(--border-radius-main);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-main);
+  overflow: auto;
 }
 .calendar-widget {
   background-color: var(--color-surface);
   border-radius: var(--border-radius-main);
   padding: 1.5rem;
   box-shadow: var(--shadow-main);
-}
-
-
-/* 6. АДАПТИВНОСТЬ МАКЕТА */
-@media (max-width: 1200px) {
-  .app-container {
-    /* На планшетах убираем колонку для right-panel */
-    grid-template-columns: 250px 1fr;
-    /* Убираем правый gap, так как панели больше нет */
-    gap: 1.5rem;
-    padding-top: 5rem;
-  }
-
-  /* Сразу прячем панель за экраном */
-  .right-panel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100vh;
-    z-index: 102;
-    transform: translateX(100%);
-    transition: transform 0.3s ease-in-out;
-  }
-
-  .app-container.sidebar-open .sidebar {
-    transform: translateX(0);
-  }
-  .app-container.right-panel-open .right-panel {
-    transform: translateX(0);
-  }
-}
-
-@media (max-width: 768px) {
-  .app-container {
-    padding-top: 5rem; /* Отступ для хедера */
-  }
-  .sidebar, .right-panel {
-    position: fixed; /* Вырываем из потока */
-    top: 0;
-    height: 100%;
-    z-index: 102;
-    transition: transform 0.3s ease-in-out;
-  }
-  .sidebar {
-    left: 0;
-    transform: translateX(-100%);
-    box-shadow: 0 0 40px rgba(0,0,0,0.2);
-  }
-  .right-panel {
-    right: 0px;
-    transform: translateX(100%);
-  }
-  
-  /* Классы для открытия */
-  .app-container.sidebar-open .sidebar {
-    transform: translateX(0);
-  }
-  .app-container.right-panel-open .right-panel {
-    transform: translateX(0);
-  }
 }

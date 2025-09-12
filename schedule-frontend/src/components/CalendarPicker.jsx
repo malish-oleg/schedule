@@ -22,7 +22,8 @@ const getWeekRange = (date) => {
 
 function CalendarPicker({ selectedDate, view }) { // <-- Добавляем `view` в пропсы
     const navigate = useNavigate();
-    const { facultyId, groupId } = useParams();
+    const { type, id1, id2 } = useParams();
+
 
     const handleDateChange = (date) => {
         let targetDate = date;
@@ -38,7 +39,11 @@ function CalendarPicker({ selectedDate, view }) { // <-- Добавляем `vie
         const month = targetDate.getMonth() + 1;
         const day = targetDate.getDate();
 
-        navigate(`/schedule/${facultyId}/${groupId}/${year}/${month}/${day}`);
+        if (type && id1 && id2) {
+            navigate(`/schedule/${type}/${id1}/${id2}/${year}/${month}/${day}`);
+        } else {
+            console.error("Невозможно сменить дату: не найдены параметры type, id1 или id2 в URL.");
+        }
     };
 
     // Функция для добавления класса к ячейкам недели

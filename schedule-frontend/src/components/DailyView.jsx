@@ -72,6 +72,41 @@ function DailyView({ schedule, date, onLessonClick, timelineRef }) {
                             if (lesson.isEmpty) return null;
                             const { top, height } = calculatePosition(lesson.time);
                             const isChoice = lesson.isChoice || false;
+
+                            const isTeacherView = lesson.groups !== undefined;
+                            let subDetails;
+
+                            if (isTeacherView) {
+                                // Вид для преподавателя
+                                subDetails = (
+                                    <>
+                                        <span title={lesson.groups.join(', ')}>
+                                            <FaUsers />
+                                            {lesson.groups.length} {lesson.groups.length === 1 ? 'группа' : 'групп'}
+                                        </span>
+                                        <span>
+                                            <FaMapMarkerAlt />
+                                            {lesson.room || '...'}
+                                        </span>
+                                    </>
+                                );
+                            } else {
+                                // Вид для студента (как и было)
+                                subDetails = (
+                                    <>
+                                        {/* Добавляем проверку на существование subgroups */}
+                                        <span title={lesson.subgroups?.map(s => s.teacher).join(', ')}>
+                                            <FaUsers />
+                                            {lesson.subgroups?.length || 0} преп.
+                                        </span>
+                                        <span>
+                                            <FaMapMarkerAlt />
+                                            {lesson.subgroups?.[0]?.room || '...'}
+                                        </span>
+                                    </>
+                                );
+                            }
+
                             return (
                                 <div 
                                     key={index} 
@@ -82,14 +117,7 @@ function DailyView({ schedule, date, onLessonClick, timelineRef }) {
                                     <strong className="lesson-name">{lesson.name}</strong>
                                     <span className="lesson-details">{lesson.type}</span>
                                     <div className="lesson-sub-details">
-                                        <span title={lesson.subgroups.map(s => s.teacher).join(', ')}>
-                                            <FaUsers />
-                                            {lesson.subgroups.length} {lesson.subgroups.length > 1 ? 'преп.' : 'преп.'}
-                                        </span>
-                                        <span>
-                                            <FaMapMarkerAlt />
-                                            {lesson.subgroups[0]?.room || '...'}
-                                        </span>
+                                        {subDetails}
                                     </div>
                                 </div>
                             );

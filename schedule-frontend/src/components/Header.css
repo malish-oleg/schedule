@@ -1,15 +1,18 @@
 /* src/components/Header.css */
 
 .mobile-header {
-    position: fixed;
-    display: none; /* По умолчанию скрыт на десктопах */
+    /* Теперь хедер виден всегда */
+    display: flex; 
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.5rem; /* Сделаем отступы побольше для десктопа */
     background-color: var(--color-surface);
     box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     align-items: center;
     justify-content: space-between;
     box-sizing: border-box;
+    position: fixed; /* Липкий хедер */
+    top: 0;
+    left: 0;
     z-index: 100;
 }
 
@@ -25,22 +28,4 @@
     font-size: 1.25rem;
     padding: 0.5rem;
     cursor: pointer;
-}
-
-/* Показываем хедер только на мобильных */
-@media (max-width: 1200px) {
-    .mobile-header {
-        display: flex;
-    }
-    .header-sidebar-button, .header-title {
-        visibility: hidden;
-    }
-}
-@media (max-width: 768px) {
-    .header-sidebar-button, .header-title {
-        visibility: visible;
-    }
-    .mobile-header {
-        display: flex;
-    }
 }

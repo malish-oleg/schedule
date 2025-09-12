@@ -6,15 +6,15 @@ import { FaBook, FaCalendarAlt, FaCog } from 'react-icons/fa'; // Иконки �
 import { Link } from 'react-router-dom';
 import './Sidebar.css';
 
-function Sidebar({ groupName }) {
+function Sidebar({ title, name, initials }) {
     return (
         <aside className="sidebar">
             <Link to="/" className="profile-link">
                 <div className="profile-section">
-                    <div className="profile-avatar">{groupName ? groupName.substring(0, 2) : '...'}</div>
+                    <div className="profile-avatar">{initials}</div>
                     <div className="profile-info">
-                        <h4>Группа</h4>
-                        <h3>{groupName || 'Загрузка...'}</h3>
+                        <h4>{title}</h4>
+                        <h3>{name || 'Загрузка...'}</h3>
                     </div>
                 </div>
             </Link>

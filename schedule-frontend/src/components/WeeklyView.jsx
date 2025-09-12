@@ -28,28 +28,42 @@ function WeeklyView({ scheduleByDay, onLessonClick }) {
                             <p>{date}</p>
                         </div>
                         <div className="lessons-list">
-                            {lessonsForDay.map((lesson, index) => (
-                                <div 
-                                    key={index} 
-                                    // Теперь lesson.isChoice всегда будет правильным
-                                    className={`lesson-card-weekly ${lesson.isChoice ? 'is-choice' : ''}`}
-                                    onClick={() => onLessonClick(lesson)}
-                                >
-                                    <p className="time">{lesson.time}</p>
-                                    <p className="name" title={lesson.fullName}>{lesson.name}</p>
-                                    <p className="type">{lesson.type}</p>
-                                    <div className="details">
-                                        <span>
-                                            <FaUsers /> 
-                                            {lesson.subgroups.length} {lesson.subgroups.length === 1 ? 'преп.' : 'преп.'}
-                                        </span>
-                                        <span>
-                                            <FaMapMarkerAlt />
-                                            {lesson.subgroups[0]?.room || '...'}
-                                        </span>
+                            {lessonsForDay.map((lesson, index) => {
+                                const isTeacherView = lesson.groups !== undefined;
+                                let details;
+
+                                if (isTeacherView) {
+                                    details = (
+                                        <>
+                                            <span><FaUsers /> {lesson.groups.length} {lesson.groups.length === 1 ? 'группа' : 'групп'}</span>
+                                            <span><FaMapMarkerAlt /> {lesson.room || '...'}</span>
+                                        </>
+                                    );
+                                } else {
+                                    details = (
+                                        <>
+                                            <span><FaUsers /> {lesson.subgroups?.length || 0} преп.</span>
+                                            <span><FaMapMarkerAlt /> {lesson.subgroups?.[0]?.room || '...'}</span>
+                                        </>
+                                    );
+                                }
+                                // ===== КОНЕЦ ИЗМЕНЕНИЙ =====
+
+                                return (
+                                    <div 
+                                        key={index} 
+                                        className={`lesson-card-weekly ${lesson.isChoice ? 'is-choice' : ''}`}
+                                        onClick={() => onLessonClick(lesson)}
+                                    >
+                                        <p className="time">{lesson.time}</p>
+                                        <p className="name" title={lesson.fullName}>{lesson.name}</p>
+                                        <p className="type">{lesson.type}</p>
+                                        <div className="details">
+                                            {details}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )

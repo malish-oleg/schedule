@@ -3,52 +3,62 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './HomePage.css'; // Новые стили для этой страницы
+import './HomePage.css';
 
 function HomePage() {
-    const [allGroups, setAllGroups] = useState([]);
+    // Единый стейт для всех "сущностей" (групп и преподавателей)
+    const [entities, setEntities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [filteredGroups, setFilteredGroups] = useState([]);
-    const [selectedGroup, setSelectedGroup] = useState(null);
+    const [filteredEntities, setFilteredEntities] = useState([]);
+    const [selectedEntity, setSelectedEntity] = useState(null);
     const [isDropdownVisible, setIsDropdownVisible] = useState(false);
     
     const navigate = useNavigate();
-    const searchWrapperRef = useRef(null); // Ref для отслеживания кликов вне поля
+    const searchWrapperRef = useRef(null);
 
-    // Загружаем все группы при первом рендере
+    // Загружаем все данные при первом рендере
     useEffect(() => {
-        const fetchAllGroups = async () => {
+        const fetchAllData = async () => {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/all-groups`);
-                setAllGroups(res.data);
+                // Запрашиваем группы и преподавателей параллельно
+                const groupsPromise = axios.get(`${import.meta.env.VITE_API_URL}/api/all-groups`);
+                const teachersPromise = axios.get(`${import.meta.env.VITE_API_URL}/api/all-teachers`);
+                
+                const [groupsRes, teachersRes] = await Promise.all([groupsPromise, teachersPromise]);
+
+                // Добавляем тип к каждому объекту, чтобы их можно было различать
+                const groups = groupsRes.data.map(g => ({ ...g, type: 'group' }));
+                const teachers = teachersRes.data.map(t => ({ ...t, type: 'teacher' }));
+
+                setEntities([...groups, ...teachers]);
             } catch (err) {
-                setError('Не удалось загрузить список групп. Попробуйте обновить страницу.');
-                console.error("Failed to load all groups", err);
+                setError('Не удалось загрузить данные. Попробуйте обновить страницу.');
+                console.error("Failed to load all data", err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchAllGroups();
+        fetchAllData();
     }, []);
 
     // Логика фильтрации
     useEffect(() => {
         if (searchTerm) {
-            const filtered = allGroups.filter(group => 
-                group.name.toLowerCase().includes(searchTerm.toLowerCase())
-            ).slice(0, 7); // Показываем не более 7 результатов
-            setFilteredGroups(filtered);
+            const filtered = entities.filter(entity => 
+                entity.name.toLowerCase().includes(searchTerm.toLowerCase())
+            ).slice(0, 10); // Показываем до 10 результатов
+            setFilteredEntities(filtered);
             setIsDropdownVisible(filtered.length > 0);
         } else {
-            setFilteredGroups([]);
+            setFilteredEntities([]);
             setIsDropdownVisible(false);
         }
-    }, [searchTerm, allGroups]);
+    }, [searchTerm, entities]);
 
-    // Обработчик клика вне поля поиска
+    // Обработчик клика вне поля
     useEffect(() => {
         function handleClickOutside(event) {
             if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target)) {
@@ -59,15 +69,19 @@ function HomePage() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [searchWrapperRef]);
 
-    const handleSelectGroup = (group) => {
-        setSelectedGroup(group);
-        setSearchTerm(group.name); // Показываем полное имя в поле ввода
+    const handleSelectEntity = (entity) => {
+        setSelectedEntity(entity);
+        setSearchTerm(entity.name);
         setIsDropdownVisible(false);
     };
 
     const handleShowSchedule = () => {
-        if (selectedGroup) {
-            navigate(`/schedule/${selectedGroup.facultyId}/${selectedGroup.id}`);
+        if (selectedEntity) {
+            if (selectedEntity.type === 'group') {
+                navigate(`/schedule/group/${selectedEntity.facultyId}/${selectedEntity.id}`);
+            } else if (selectedEntity.type === 'teacher') {
+                navigate(`/schedule/teacher/${selectedEntity.chairId}/${selectedEntity.id}`);
+            }
         }
     };
 
@@ -75,27 +89,28 @@ function HomePage() {
         <div className="home-page-container">
             <div className="search-card">
                 <h1>Учебное расписание</h1>
-                <p>Введите номер вашей группы, чтобы найти расписание</p>
+                <p>Введите номер группы или фамилию преподавателя</p>
                 
                 <div className="search-wrapper" ref={searchWrapperRef}>
                     <input 
                         type="text"
-                        placeholder={loading ? "Загрузка списка групп..." : "Например, 25-42"}
+                        placeholder={loading ? "Загрузка данных..." : "Поиск..."}
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
-                            setSelectedGroup(null); // Сбрасываем выбор при изменении текста
+                            setSelectedEntity(null);
                         }}
-                        onFocus={() => setIsDropdownVisible(searchTerm && filteredGroups.length > 0)}
+                        onFocus={() => setIsDropdownVisible(searchTerm && filteredEntities.length > 0)}
                         disabled={loading}
                         className="search-input"
                     />
                     {isDropdownVisible && (
                         <ul className="suggestions-dropdown">
-                            {filteredGroups.map(group => (
-                                <li key={group.id} onClick={() => handleSelectGroup(group)}>
-                                    <strong>{group.name}</strong>
-                                    <span>{group.facultyName}</span>
+                            {filteredEntities.map(entity => (
+                                <li key={`${entity.type}-${entity.id}`} onClick={() => handleSelectEntity(entity)}>
+                                    <strong>{entity.name}</strong>
+                                    {/* Показываем доп. инфо в зависимости от типа */}
+                                    <span>{entity.type === 'group' ? entity.facultyName : entity.chairName}</span>
                                 </li>
                             ))}
                         </ul>
@@ -104,7 +119,7 @@ function HomePage() {
 
                 <button 
                     onClick={handleShowSchedule} 
-                    disabled={!selectedGroup}
+                    disabled={!selectedEntity}
                     className="view-button"
                 >
                     Посмотреть

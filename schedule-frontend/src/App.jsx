@@ -9,26 +9,43 @@ import './App.css';
 function App() {
   return (
     <BrowserRouter>
-      {/* Убираем .app-layout и .main-content отсюда */}
+      {/* Убираем .app-layout, так как он теперь внутри SchedulePage */}
       <Routes>
-        {/* HomePage будет без основного макета, это нормально */}
-        <Route path="/" element={<HomePage />} /> 
+        <Route path="/" element={<HomePage />} />
         
-        {/* А вот SchedulePage будет рендерить весь макет */}
-        <Route path="/schedule/:facultyId/:groupId/:year/:month/:day" element={<SchedulePage />} />
-        <Route path="/schedule/:facultyId/:groupId" element={<ScheduleRedirector />} />
+        {/* МАРШРУТЫ ДЛЯ РАСПИСАНИЯ */}
+        {/* :type будет либо 'group', либо 'teacher' */}
+        <Route path="/schedule/:type/:id1/:id2/:year/:month/:day" element={<SchedulePage />} />
+        <Route path="/schedule/:type/:id1/:id2" element={<ScheduleRedirector />} />
+        
+        {/* Редирект со старых ссылок на новый формат (если нужно) */}
+        <Route path="/schedule/:facultyId/:groupId" element={<OldLinkRedirector type="group" />} />
+        <Route path="/schedule/:facultyId/:groupId/:week" element={<OldLinkRedirector type="group" />} />
+
       </Routes>
     </BrowserRouter>
   );
 }
 
+// Универсальный редиректор на сегодняшний день
 function ScheduleRedirector() {
-  const { facultyId, groupId } = useParams();
+  const { type, id1, id2 } = useParams();
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
   const day = today.getDate();
-  return <Navigate to={`/schedule/${facultyId}/${groupId}/${year}/${month}/${day}`} replace />;
+  return <Navigate to={`/schedule/${type}/${id1}/${id2}/${year}/${month}/${day}`} replace />;
 }
+
+// Вспомогательный редиректор для совместимости со старыми ссылками (опционально, но полезно)
+function OldLinkRedirector({ type }) {
+    const { facultyId, groupId } = useParams();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const day = today.getDate();
+    return <Navigate to={`/schedule/${type}/${facultyId}/${groupId}/${year}/${month}/${day}`} replace />;
+}
+
 
 export default App;

@@ -53,20 +53,38 @@ function TableView({ weekSchedule, onLessonClick }) {
                         <div className="time-cell">{time}</div>
                         {dayOrder.map(day => {
                             const lesson = scheduleMatrix[time][day];
+
+                            const isTeacherView = lesson && lesson.groups !== undefined;
+                            let details;
+                            
+                            if (isTeacherView) {
+                                details = (
+                                    <>
+                                        <span><FaUsers /> {lesson.groups.length}</span>
+                                        <span><FaMapMarkerAlt /> {lesson.room || '...'}</span>
+                                    </>
+                                );
+                            } else if (lesson) {
+                                details = (
+                                    <>
+                                        <span><FaUsers /> {lesson.subgroups?.length || 0}</span>
+                                        <span><FaMapMarkerAlt /> {lesson.subgroups?.[0]?.room || '...'}</span>
+                                    </>
+                                );
+                            }
+
                             return (
                                 <div key={`${time}-${day}`} className="lesson-cell">
                                     {lesson && !lesson.isEmpty && (
                                         <div 
                                             className={`lesson-card-table ${lesson.isChoice ? 'is-choice' : ''}`}
-                                            data-day={day}
-                                            data-time={time}
+                                            data-day={day} data-time={time}
                                             onClick={() => onLessonClick(lesson)}
                                         >
                                             <p className="name" title={lesson.fullName}>{lesson.name}</p>
                                             <p className="type">{lesson.type}</p>
                                             <div className="details">
-                                                <span><FaUsers /> {lesson.subgroups.length}</span>
-                                                <span><FaMapMarkerAlt /> {lesson.subgroups[0]?.room || '...'}</span>
+                                                {details}
                                             </div>
                                         </div>
                                     )}
