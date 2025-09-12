@@ -59,16 +59,41 @@ body {
   padding-top: 5rem;
 }
 
+.panel-close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 103; /* Выше всего остального */
+}
+.panel-content {
+    padding-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100%; /* <-- Важно, чтобы футер в сайдбаре прижимался к низу */
+    box-sizing: border-box;
+}
+
 /* Боковые панели теперь position: fixed и по умолчанию за экраном */
 .sidebar, .right-panel {
     position: fixed;
     top: 0;
     height: 100vh;
-    z-index: 102; /* Выше оверлея и хедера */
-    box-shadow: 0 0 40px rgba(0,0,0,0.2);
-    background-color: var(--color-bg);
+    z-index: 102; /* Выше оверлея и хедера*/
     transition: transform 0.3s ease-in-out;
     padding-top: 5rem; /* Отступ, чтобы контент не залезал под хедер */
+    box-sizing: border-box;
+    background-color: var(--color-surface); /* <-- Переносим фон сюда */
+    border-radius: var(--border-radius-main); /* <-- Переносим скругление сюда */
+    box-shadow: var(--shadow-main);
+
+    padding: 1.5rem; /* Добавляем внутренние отступы */
     box-sizing: border-box;
 }
 

@@ -1,6 +1,7 @@
 // src/pages/SchedulePage.jsx
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
@@ -14,7 +15,7 @@ import TableView from '../components/TableView';
 import Header from '../components/Header';
 import Overlay from '../components/Overlay';
 import ActionButtons from '../components/ActionButtons';
-import Footer from '../components/Footer'; // Добавляем импорт футера
+import ContactView from '../components/ContactView';
 import { getWeekNumber } from '../utils/dateUtils';
 
 function SchedulePage() {
@@ -31,6 +32,7 @@ function SchedulePage() {
     const [selectedLesson, setSelectedLesson] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+    const [activeView, setActiveView] = useState('schedule');
 
     // Эффект для загрузки данных в зависимости от типа (студент/преподаватель)
     useEffect(() => {
@@ -168,44 +170,58 @@ function SchedulePage() {
                     title={sidebarTitle}
                     name={entityName}
                     initials={sidebarInitials}
+                    on_Close={() => setIsSidebarOpen(false)}
+                    activeView={activeView}
+                    setActiveView={setActiveView}
                 />
                 
                 <main className="main-content">
                     <div className="schedule-view">
-                        {loading ? (
-                            <div className="loading-placeholder">
-                                <p>Загрузка расписания...</p>
-                            </div>
+                        {activeView === 'schedule' ? (
+                        <>
+                            {loading ? (
+                                <div className="loading-placeholder">
+                                    <p>Загрузка расписания...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {view === 'daily' && (
+                                        <DailyView 
+                                            schedule={dailySchedule} 
+                                            date={selectedDate}
+                                            onLessonClick={openModal}
+                                            timelineRef={timelineWrapperRef}
+                                        />
+                                    )}
+                                    {view === 'weekly' && (
+                                        <WeeklyView 
+                                            scheduleByDay={weeklyScheduleData}
+                                            onLessonClick={openModal} 
+                                        />
+                                    )}
+                                    {view === 'table' && (
+                                        <TableView 
+                                            weekSchedule={weekSchedule}
+                                            onLessonClick={openModal}
+                                        />
+                                    )}
+                                </>
+                            )}
+                        </>
                         ) : (
-                            <>
-                                {view === 'daily' && (
-                                    <DailyView 
-                                        schedule={dailySchedule} 
-                                        date={selectedDate}
-                                        onLessonClick={openModal}
-                                        timelineRef={timelineWrapperRef}
-                                    />
-                                )}
-                                {view === 'weekly' && (
-                                    <WeeklyView 
-                                        scheduleByDay={weeklyScheduleData}
-                                        onLessonClick={openModal} 
-                                    />
-                                )}
-                                {view === 'table' && (
-                                    <TableView 
-                                        weekSchedule={weekSchedule}
-                                        onLessonClick={openModal}
-                                    />
-                                )}
-                            </>
+                            <ContactView />
                         )}
                     </div>
                 </main>
                 <aside className="right-panel">
-                    <ViewSwitcher view={view} setView={setView} />
-                    <CalendarPicker selectedDate={selectedDate} view={view} />
-                    <ActionButtons />
+                    <button className="panel-close-button" onClick={() => setIsRightPanelOpen(false)}>
+                        <FaTimes />
+                    </button>
+                    <div className="panel-content">
+                        <ViewSwitcher view={view} setView={setView} />
+                        <CalendarPicker selectedDate={selectedDate} view={view} />
+                        <ActionButtons />
+                    </div>
                 </aside>
                 <Modal 
                     isOpen={isModalOpen}
