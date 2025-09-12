@@ -16,6 +16,7 @@ const httpsAgent = new https.Agent({
 });
 
 const BASE_URL = 'https://is.agni-rt.ru/index.php?type=1&page=student_schedule_lessons';
+const TEACHER_BASE_URL = 'https://is.agni-rt.ru/index.php?type=2&page=teacher_schedule_lessons';
 const AXIOS_CONFIG = {
     headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -26,6 +27,59 @@ const AXIOS_CONFIG = {
     httpsAgent: httpsAgent,
     responseType: 'arraybuffer',
 };
+
+app.get('/api/all-groups', async (req, res) => {
+    console.log(`[${new Date().toISOString()}] GET /api/all-groups`);
+    try {
+        // 1. Сначала получаем все факультеты
+        const facultyResponse = await axios.get(BASE_URL, AXIOS_CONFIG);
+        const facultyHtml = iconv.decode(Buffer.from(facultyResponse.data), 'win1251');
+        const $f = cheerio.load(facultyHtml);
+
+        const faculties = [];
+        $f('a[href*="sp_student.faculty_id.value"]').each((i, element) => {
+            const hrefAttr = $f(element).attr('href');
+            if (hrefAttr) {
+                const idMatch = hrefAttr.match(/faculty_id\.value='(\d+)'/);
+                if (idMatch && idMatch[1]) {
+                    faculties.push({ id: idMatch[1], name: $f(element).find('div').text().trim() });
+                }
+            }
+        });
+
+        // 2. Для каждого факультета запрашиваем его группы
+        let allGroups = [];
+        // Используем Promise.all для параллельного выполнения запросов - это быстро!
+        await Promise.all(faculties.map(async (faculty) => {
+            const formData = new URLSearchParams();
+            formData.append('faculty_id', faculty.id);
+            const groupResponse = await axios.post(BASE_URL, formData, AXIOS_CONFIG);
+            const groupHtml = iconv.decode(Buffer.from(groupResponse.data), 'win1251');
+            const $g = cheerio.load(groupHtml);
+
+            $g('a[href*="sp_student.group_id.value"]').each((j, a) => {
+                const hrefAttr = $g(a).attr('href');
+                if (hrefAttr) {
+                    const idMatch = hrefAttr.match(/group_id\.value='(\d+)'/);
+                    if (idMatch && idMatch[1]) {
+                        allGroups.push({
+                            id: idMatch[1],
+                            name: $g(a).text().trim(),
+                            facultyId: faculty.id, // Добавляем ID факультета
+                            facultyName: faculty.name // И его имя для контекста
+                        });
+                    }
+                }
+            });
+        }));
+
+        res.json(allGroups);
+
+    } catch (error) {
+        console.error('Error fetching all groups:', error.message);
+        res.status(500).json({ error: 'Failed to fetch all groups' });
+    }
+});
 
 app.get('/api/faculties', async (req, res) => {
     try {
@@ -268,6 +322,129 @@ app.post('/api/schedule', async (req, res) => {
         console.error('Specific error message:', error.message);
         console.error('Stack trace:', error.stack);
         res.status(500).json({ error: 'Failed to fetch or parse schedule' });
+    }
+});
+
+// TEACHER SCHEDULE
+
+app.get('/api/all-teachers', async (req, res) => {
+    try {
+        const chairResponse = await axios.get(TEACHER_BASE_URL, AXIOS_CONFIG);
+        const chairHtml = iconv.decode(Buffer.from(chairResponse.data), 'win1251');
+        const $c = cheerio.load(chairHtml);
+        const chairs = [];
+        $c('select[name="chair_id"] option').each((i, el) => {
+            chairs.push({ id: $c(el).attr('value'), name: $c(el).text().trim() });
+        });
+        let allTeachers = [];
+        await Promise.all(chairs.map(async (chair) => {
+            const formData = new URLSearchParams();
+            formData.append('chair_id', chair.id);
+            const teacherResponse = await axios.post(TEACHER_BASE_URL, formData, AXIOS_CONFIG);
+            const teacherHtml = iconv.decode(Buffer.from(teacherResponse.data), 'win1251');
+            const $t = cheerio.load(teacherHtml);
+            $t('select[name="teacher_id"] option').each((j, el) => {
+                allTeachers.push({ id: $t(el).attr('value'), name: $t(el).text().trim(), chairId: chair.id, chairName: chair.name, });
+            });
+        }));
+        const uniqueTeachers = allTeachers.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+        res.json(uniqueTeachers);
+    } catch (error) {
+        console.error('Error fetching all teachers:', error.message);
+        res.status(500).json({ error: 'Failed to fetch all teachers' });
+    }
+});
+
+app.post('/api/teacher-schedule', async (req, res) => {
+    const { chair_id, teacher_id, year_week_number } = req.body;
+    if (!chair_id || !teacher_id || !year_week_number) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    try {
+        const formData = new URLSearchParams();
+        formData.append('chair_id', chair_id);
+        formData.append('teacher_id', teacher_id);
+        formData.append('year_week_number', year_week_number);
+
+        const response = await axios.post(TEACHER_BASE_URL, formData, AXIOS_CONFIG);
+        const html = iconv.decode(Buffer.from(response.data), 'win1251');
+        const $ = cheerio.load(html);
+        
+        const weekInfo = $('td:contains("Неделя: ")').next().find('td[width="100%"]').text().trim();
+        const startDateString = weekInfo.split(' ')[0];
+        const dateMap = {};
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(startDateString)) {
+            const [day, month, year] = startDateString.split('.').map(Number);
+            const mondayDate = new Date(year, month - 1, day);
+            const daysOfWeek = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+            for (let i = 0; i < 7; i++) {
+                const currentDate = new Date(mondayDate);
+                currentDate.setDate(mondayDate.getDate() + i);
+                const d = String(currentDate.getDate()).padStart(2, '0');
+                const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const y = currentDate.getFullYear();
+                dateMap[daysOfWeek[i]] = `${d}.${m}.${y}`;
+            }
+        }
+
+        const schedule = [];
+        const mainTable = $('.slt');
+        const headers = [];
+        mainTable.find('> tbody > tr').first().find('th').slice(1).each((i, th) => {
+            headers.push($(th).contents().filter((_, el) => el.type === 'text').text().trim());
+        });
+        
+        mainTable.find('> tbody > tr').slice(1).each((i, tr) => {
+            const time = $(tr).find('th').first().text().trim();
+            if (!time) return;
+            $(tr).children('td').each((j, dayCell) => {
+                const dayName = headers[j];
+                if (!dayName) return;
+                const cell = $(dayCell).find('td[width="100%"]'); // Ищем внутреннюю ячейку
+                if (cell.text().trim() === '') {
+                    schedule.push({ day: dayName, date: dateMap[dayName] || '', time: time, isEmpty: true, name: 'Окно', groups: [] });
+                    return;
+                }
+                
+                let lessonType = '';
+                cell.find('span[title]').each((_, span) => {
+                    const text = $(span).text().trim();
+                    if (text.startsWith('(') && text.endsWith(')')) lessonType = text;
+                });
+                
+                const lessonName = cell.find('b').first().text().trim();
+                const room = cell.find('.aud_number').text().trim();
+                
+                // ===== НАЧАЛО ИСПРАВЛЕНИЯ =====
+                // 1. Получаем весь текст из ячейки
+                let fullText = cell.text().trim();
+                // 2. Последовательно удаляем из него все, что нам уже известно
+                fullText = fullText.replace(lessonName, '');
+                fullText = fullText.replace(lessonType, '');
+                fullText = fullText.replace(room, '');
+                // 3. То, что осталось - это и есть группы. Очищаем от лишних пробелов и разбиваем
+                const groups = fullText.trim().split(',').map(g => g.trim()).filter(Boolean);
+                // ===== КОНЕЦ ИСПРАВЛЕНИЯ =====
+
+                const lesson = {
+                    day: dayName,
+                    date: dateMap[dayName] || '',
+                    time: time,
+                    name: lessonName,
+                    fullName: cell.find('b').parent().attr('title')?.trim() || '',
+                    type: lessonType,
+                    room: room,
+                    groups: groups // Используем наш новый, правильный массив
+                };
+                schedule.push(lesson);
+
+            });
+        });
+
+        res.json({ weekInfo, schedule });
+    } catch (error) {
+        console.error('Error fetching teacher schedule:', error.message);
+        res.status(500).json({ error: 'Failed to fetch teacher schedule' });
     }
 });
 

@@ -1,0 +1,61 @@
+/* src/components/Calendar.css */
+
+/* Переопределяем стили react-calendar */
+.react-calendar {
+  width: 100%;
+  border: none;
+  background-color: transparent;
+  font-family: var(--font-main);
+}
+
+.react-calendar__navigation button {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.react-calendar__tile {
+  color: var(--color-text-primary);
+  border-radius: var(--border-radius-subtle);
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background-color: var(--color-primary-soft);
+}
+
+/* Выбранный день */
+.react-calendar__tile--active {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+}
+
+/* Сегодняшний день */
+.react-calendar__tile--now {
+  background: var(--color-primary-soft);
+  font-weight: 700;
+}
+
+.react-calendar__tile.week-highlight {
+    background-color: var(--color-primary-soft);
+}
+
+/* Выбранный день должен быть ярче, чем остальные дни недели */
+.react-calendar__tile.week-highlight.react-calendar__tile--active {
+    background-color: var(--color-primary) !important;
+}
+
+/* Стили для скругления углов у начала и конца недели */
+.react-calendar__tile.week-highlight:first-child {
+    border-top-left-radius: var(--border-radius-subtle);
+    border-bottom-left-radius: var(--border-radius-subtle);
+}
+.react-calendar__tile.week-highlight:last-child {
+    border-top-right-radius: var(--border-radius-subtle);
+    border-bottom-right-radius: var(--border-radius-subtle);
+}

@@ -1,0 +1,128 @@
+/* src/components/WeeklyView.css */
+
+.weekly-view-container {
+    height: 100%;
+    display: grid;
+    grid-auto-flow: column; /* Магия: выстраивает элементы в горизонтальный ряд */
+    grid-auto-columns: 300px; /* Ширина каждой колонки дня */
+    gap: 1.5rem;
+    overflow-x: auto; /* Включаем горизонтальную прокрутку */
+    padding: 0.25rem 0.25rem 1rem 0.25rem; /* Отступы, чтобы тени не обрезались */
+    /* Плавный скролл на десктопе */
+    scroll-snap-type: x mandatory;
+}
+/* Стилизация скроллбара */
+.weekly-view-container::-webkit-scrollbar {
+    height: 8px;
+}
+.weekly-view-container::-webkit-scrollbar-track {
+    background: var(--color-bg);
+    border-radius: 4px;
+}
+.weekly-view-container::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+}
+.weekly-view-container::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+}
+
+.day-column-weekly {
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-main);
+    display: flex;
+    flex-direction: column;
+    scroll-snap-align: start; /* Примагничивает колонку к началу при скролле */
+}
+
+.day-header-weekly {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    text-align: center;
+    position: sticky; /* Заголовок "прилипает" к верху колонки при скролле */
+    top: 0;
+    background-color: var(--color-bg);
+    z-index: 1;
+    border-top-left-radius: var(--border-radius-main);
+    border-top-right-radius: var(--border-radius-main);
+}
+.day-header-weekly h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.day-header-weekly p {
+    margin: 0.25rem 0 0 0;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.lessons-list {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto; /* Позволяет скроллить пары внутри дня */
+}
+
+.lesson-card-weekly {
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-subtle);
+    padding: 1rem;
+    border-left: 4px solid var(--color-primary);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: var(--shadow-main);
+}
+.lesson-card-weekly:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.15);
+}
+
+.lesson-card-weekly.is-choice {
+    border-left-color: var(--color-secondary);
+}
+
+.lesson-card-weekly p {
+    margin: 0 0 0.5rem 0;
+}
+.lesson-card-weekly .time {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+}
+.lesson-card-weekly .name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+}
+.lesson-card-weekly .type {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin-top: -0.25rem;
+}
+
+.lesson-card-weekly .details {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+.lesson-card-weekly .details span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Заглушка, если нет пар */
+.no-lessons-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--color-text-secondary);
+    font-size: 1.2rem;
+}

@@ -1,0 +1,41 @@
+/* src/components/ActionButtons.css */
+
+.action-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border-radius: var(--border-radius-subtle);
+    border: 2px solid var(--color-primary);
+    background-color: transparent;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.action-button:hover {
+    background-color: var(--color-primary-soft);
+}
+
+.action-button.primary {
+    background-color: var(--color-primary);
+    color: white;
+}
+.action-button.primary:hover {
+    background-color: var(--color-primary);
+    opacity: 0.9;
+}
+
+.action-button span {
+    transition: color 0.2s;
+}

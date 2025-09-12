@@ -1,0 +1,31 @@
+/* src/components/Header.css */
+
+.mobile-header {
+    /* Теперь хедер виден всегда */
+    display: flex; 
+    width: 100%;
+    padding: 0.75rem 1.5rem; /* Сделаем отступы побольше для десктопа */
+    background-color: var(--color-surface);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    position: fixed; /* Липкий хедер */
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+.header-title {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.header-button {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 1.25rem;
+    padding: 0.5rem;
+    cursor: pointer;
+}
