@@ -1,5 +1,5 @@
 /node_modules
+/cache
+/logs
 .env
 .enc.local
-/cache
-/logs/requests.log
