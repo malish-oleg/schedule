@@ -1,19 +1,19 @@
 // src/components/ExportButtons.jsx
 
 import React from 'react';
-import * as XLSX from 'xlsx';
-import html2canvas from 'html2canvas';
 import { FaFileExcel, FaFileImage } from 'react-icons/fa';
 import './ActionButtons.css'; // Мы можем переиспользовать стили от ActionButtons
 
 function ExportButtons({ scheduleData, groupName }) {
     
     // Функция экспорта в Excel (XLSX)
-    const handleExportXLSX = () => {
+    const handleExportXLSX = async() => {
         if (!scheduleData || Object.keys(scheduleData).length === 0) {
             alert("Нет данных для экспорта.");
             return;
         }
+
+        const XLSX = await import('xlsx');
 
         const dayOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
         const timeSlots = Array.from(new Set(Object.values(scheduleData).flat().map(l => l.time))).sort();
@@ -52,7 +52,7 @@ function ExportButtons({ scheduleData, groupName }) {
     };
 
     // Функция экспорта в PNG
-    const handleExportPNG = () => {
+    const handleExportPNG = async() => {
         // Ищем элемент с таблицей в DOM. Мы дадим ему id='tableView'
         const tableViewElement = document.getElementById('tableViewForExport');
         
@@ -60,6 +60,8 @@ function ExportButtons({ scheduleData, groupName }) {
             alert("Для экспорта в PNG откройте вид 'Таблица'.");
             return;
         }
+
+        const { default: html2canvas } = await import('html2canvas');
 
         html2canvas(tableViewElement, {
             useCORS: true, // На случай, если есть внешние изображения
