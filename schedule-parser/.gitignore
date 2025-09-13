@@ -2,4 +2,4 @@
 .env
 .enc.local
 /cache
-/logs
+/logs/requests.log

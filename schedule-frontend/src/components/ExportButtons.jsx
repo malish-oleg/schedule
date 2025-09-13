@@ -99,18 +99,17 @@ function ExportButtons({ scheduleData, groupName }) {
         tableViewContainer.scrollLeft = 0;
 
         const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim();
-        
-        // 4. Делаем скриншот
-        html2canvas(gridElement, {
+        const scale = Math.min(window.devicePixelRatio, 3);
+
+        // 2. Делаем скриншот с новым параметром `scale`
+        html2canvas(clone, {
             useCORS: true,
-            scale: 2,
             backgroundColor: backgroundColor,
-            // Указываем, что нужно захватить всю область скролла
-            width: gridElement.scrollWidth,
-            height: gridElement.scrollHeight,
-            // Скролл уже на месте, поэтому эти параметры нулевые
-            scrollX: 0,
-            scrollY: 0,
+            width: clone.scrollWidth,
+            height: clone.scrollHeight,
+            windowWidth: clone.scrollWidth,
+            windowHeight: clone.scrollHeight,
+            scale: scale, // <-- ГЛАВНОЕ ИЗМЕНЕНИЕ
         }).then(canvas => {
             const link = document.createElement('a');
             link.download = `Расписание_${groupName}.png`;
@@ -120,10 +119,7 @@ function ExportButtons({ scheduleData, groupName }) {
             console.error("Ошибка при создании PNG:", err);
             alert("Произошла ошибка при создании изображения.");
         }).finally(() => {
-            // 5. ВАЖНО: Возвращаем все как было
-            stickyElements.forEach(el => el.style.position = 'sticky');
-            tableViewContainer.scrollTop = originalScrollTop;
-            tableViewContainer.scrollLeft = originalScrollLeft;
+            document.body.removeChild(container);
         });
 
         // ===== КОНЕЦ НОВОЙ ЛОГИКИ =====
