@@ -1,13 +1,23 @@
+// schedule-parser/index.js (Версия с кешированием в JSON)
+
 const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
 const cors = require('cors');
 const https = require('https');
+const fs = require('fs').promises;
+const path = require('path');
 
+// --- НАСТРОЙКИ ---
+const CACHE_DIR = path.join(__dirname, 'cache');
+const GROUPS_CACHE_PATH = path.join(CACHE_DIR, 'allGroups.json');
+const TEACHERS_CACHE_PATH = path.join(CACHE_DIR, 'allTeachers.json');
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 дней в миллисекундах
+
+// --- КОНФИГУРАЦИЯ СЕРВЕРА ---
 const app = express();
-const PORT = 3001;
-
+const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
@@ -15,7 +25,7 @@ const httpsAgent = new https.Agent({
     rejectUnauthorized: false,
 });
 
-const BASE_URL = 'https://is.agni-rt.ru/index.php?type=1&page=student_schedule_lessons';
+const STUDENT_BASE_URL = 'https://is.agni-rt.ru/index.php?type=1&page=student_schedule_lessons';
 const TEACHER_BASE_URL = 'https://is.agni-rt.ru/index.php?type=2&page=teacher_schedule_lessons';
 const AXIOS_CONFIG = {
     headers: {
@@ -28,14 +38,16 @@ const AXIOS_CONFIG = {
     responseType: 'arraybuffer',
 };
 
-app.get('/api/all-groups', async (req, res) => {
-    console.log(`[${new Date().toISOString()}] GET /api/all-groups`);
+// ======================================================
+// =============== ЛОГИКА КЕШИРОВАНИЯ ====================
+// ======================================================
+
+async function updateGroupsCache() {
+    console.log(`[${new Date().toISOString()}] Starting to update groups cache...`);
     try {
-        // 1. Сначала получаем все факультеты
-        const facultyResponse = await axios.get(BASE_URL, AXIOS_CONFIG);
+        const facultyResponse = await axios.get(STUDENT_BASE_URL, AXIOS_CONFIG);
         const facultyHtml = iconv.decode(Buffer.from(facultyResponse.data), 'win1251');
         const $f = cheerio.load(facultyHtml);
-
         const faculties = [];
         $f('a[href*="sp_student.faculty_id.value"]').each((i, element) => {
             const hrefAttr = $f(element).attr('href');
@@ -46,288 +58,36 @@ app.get('/api/all-groups', async (req, res) => {
                 }
             }
         });
-
-        // 2. Для каждого факультета запрашиваем его группы
+        
         let allGroups = [];
-        // Используем Promise.all для параллельного выполнения запросов - это быстро!
         await Promise.all(faculties.map(async (faculty) => {
             const formData = new URLSearchParams();
             formData.append('faculty_id', faculty.id);
-            const groupResponse = await axios.post(BASE_URL, formData, AXIOS_CONFIG);
+            const groupResponse = await axios.post(STUDENT_BASE_URL, formData, AXIOS_CONFIG);
             const groupHtml = iconv.decode(Buffer.from(groupResponse.data), 'win1251');
             const $g = cheerio.load(groupHtml);
-
             $g('a[href*="sp_student.group_id.value"]').each((j, a) => {
                 const hrefAttr = $g(a).attr('href');
                 if (hrefAttr) {
                     const idMatch = hrefAttr.match(/group_id\.value='(\d+)'/);
                     if (idMatch && idMatch[1]) {
                         allGroups.push({
-                            id: idMatch[1],
-                            name: $g(a).text().trim(),
-                            facultyId: faculty.id, // Добавляем ID факультета
-                            facultyName: faculty.name // И его имя для контекста
+                            id: idMatch[1], name: $g(a).text().trim(), facultyId: faculty.id, facultyName: faculty.name
                         });
                     }
                 }
             });
         }));
 
-        res.json(allGroups);
-
+        await fs.writeFile(GROUPS_CACHE_PATH, JSON.stringify({ timestamp: Date.now(), data: allGroups }));
+        console.log(`[${new Date().toISOString()}] Groups cache updated successfully.`);
     } catch (error) {
-        console.error('Error fetching all groups:', error.message);
-        res.status(500).json({ error: 'Failed to fetch all groups' });
+        console.error(`[${new Date().toISOString()}] Failed to update groups cache:`, error.message);
     }
-});
+}
 
-app.get('/api/faculties', async (req, res) => {
-    try {
-        const response = await axios.get(BASE_URL, AXIOS_CONFIG);
-        const html = iconv.decode(Buffer.from(response.data), 'win1251');
-        const $ = cheerio.load(html);
-
-        const faculties = [];
-
-        $('a[href*="sp_student.faculty_id.value"]').each((i, element) => {
-            const hrefAttr = $(element).attr('href');
-
-            if (hrefAttr) { 
-                const idMatch = hrefAttr.match(/faculty_id\.value='(\d+)'/);
-                
-                if (idMatch && idMatch[1]) {
-                    faculties.push({
-                        id: idMatch[1],
-                        name: $(element).find('div').text().trim(),
-                    });
-                }
-            }
-        });
-
-        if (faculties.length === 0) {
-            console.error("Парсер не смог найти факультеты с исправленным регулярным выражением.");
-            require('fs').writeFileSync('debug_faculties_final_attempt.html', html);
-            return res.status(404).json({ error: 'Could not find any faculties on the page.' });
-        }
-
-        res.json(faculties);
-    } catch (error) {
-        console.error('Error fetching faculties:', error.message);
-        res.status(500).json({ error: 'Failed to fetch faculties' });
-    }
-});
-
-app.get('/api/groups/:facultyId', async (req, res) => {
-    const { facultyId } = req.params;
-    if (!facultyId) {
-        return res.status(400).json({ error: 'Faculty ID is required' });
-    }
-
-    try {
-        const formData = new URLSearchParams();
-        formData.append('faculty_id', facultyId);
-
-        const response = await axios.post(BASE_URL, formData, AXIOS_CONFIG);
-        const html = iconv.decode(Buffer.from(response.data), 'win1251');
-        const $ = cheerio.load(html);
-
-        const groups = [];
-        let currentCourse = 'Неизвестный курс';
-
-        $('td:contains("Группа: ")').next().find('table tr').each((i, tr) => {
-            const row = $(tr);
-            const courseCell = row.find('td[align="center"]');
-
-            if (courseCell.length > 0) {
-                currentCourse = courseCell.contents().first().text().trim();
-            }
-
-            row.find('a[href*="sp_student.group_id.value"]').each((j, a) => {
-                const hrefAttr = $(a).attr('href');
-
-                if (hrefAttr) {
-                    const idMatch = hrefAttr.match(/group_id\.value='(\d+)'/);
-                    
-                    if (idMatch && idMatch[1]) {
-                        groups.push({
-                            id: idMatch[1],
-                            name: $(a).text().trim(),
-                            course: currentCourse,
-                        });
-                    }
-                }
-            });
-        });
-
-        res.json(groups);
-    } catch (error) {
-        console.error('Error fetching groups:', error.message);
-        res.status(500).json({ error: 'Failed to fetch groups' });
-    }
-});
-
-app.post('/api/schedule', async (req, res) => {
-    const { faculty_id, group_id, year_week_number } = req.body;
-
-    if (!faculty_id || !group_id || !year_week_number) {
-        return res.status(400).json({ error: 'Missing required parameters' });
-    }
-
-    try {
-        const formData = new URLSearchParams();
-        formData.append('faculty_id', faculty_id);
-        formData.append('group_id', group_id);
-        formData.append('year_week_number', year_week_number);
-
-        const response = await axios.post(BASE_URL, formData, AXIOS_CONFIG);
-        const html = iconv.decode(Buffer.from(response.data), 'win1251');
-        const $ = cheerio.load(html);
-
-        const weekInfo = $('td:contains("Неделя: ")').next().find('td[width="100%"]').text().trim();
-        const startDateString = weekInfo.split(' ')[0];
-        const dateMap = {};
-        if (/^\d{2}\.\d{2}\.\d{4}$/.test(startDateString)) {
-            const [day, month, year] = startDateString.split('.').map(Number);
-            const mondayDate = new Date(year, month - 1, day);
-            
-            const daysOfWeek = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
-
-            for (let i = 0; i < 7; i++) {
-                const currentDate = new Date(mondayDate);
-                currentDate.setDate(mondayDate.getDate() + i);
-                
-                const d = String(currentDate.getDate()).padStart(2, '0');
-                const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-                const y = currentDate.getFullYear();
-
-                dateMap[daysOfWeek[i]] = `${d}.${m}.${y}`;
-            }
-        } else {
-            console.warn("Could not parse start date from weekInfo:", weekInfo);
-        }
-
-        const schedule = [];
-        const mainTable = $('.slt');
-
-        const headers = [];
-        mainTable.find('> tbody > tr').first().find('th').slice(1).each((i, th) => {
-            const dayText = $(th).contents().filter((_, el) => el.type === 'text').text().trim();
-            headers.push(dayText);
-        });
-
-        mainTable.find('> tbody > tr').slice(1).each((i, tr) => {
-            const time = $(tr).find('th').first().text().trim();
-            if (!time) return;
-
-            $(tr).children('td').each((j, dayCell) => {
-                const dayName = headers[j] || '';
-                const cell = $(dayCell);
-                if (cell.text().trim() === '') {
-                    schedule.push({
-                        day: dayName,
-                        date: dateMap[dayName] || '',
-                        time: time,
-                        name: 'Окно',
-                        isEmpty: true,
-                        fullName: '',
-                        type: '',
-                        subgroups: []
-                    });
-                    return;
-                }
-
-                const isChoiceLessons = cell.find('td.blb').length > 0;
-
-                if (isChoiceLessons) {
-                    const lessonCells = cell.find('table.slt_gr_wl > tbody > tr:first-child').children('td');
-                    lessonCells.each((k, lessonCellNode) => {
-                        const lessonCell = $(lessonCellNode);
-                        if (lessonCell.text().trim() === '') return;
-                        
-                        let lessonType = '';
-                        lessonCell.find('span[title]').each((_, span) => {
-                            const text = $(span).text().trim();
-                            if (text.startsWith('(') && text.endsWith(')')) lessonType = text;
-                        });
-
-                        const lesson = {
-                            day: dayName, date: dateMap[dayName] || '', time: time,
-                            name: lessonCell.find('b').first().text().trim(),
-                            fullName: lessonCell.find('b').parent().attr('title')?.trim() || '',
-                            type: lessonType,
-                            subgroups: [{
-                                room: lessonCell.find('.aud_number').text().trim(),
-                                teacher: lessonCell.find('span[title]').last().attr('title')?.trim() || '',
-                                teacherShort: lessonCell.find('span[title]').last().text().trim(),
-                                subgroupNumber: null
-                            }]
-                        };
-                        schedule.push(lesson);
-                    });
-
-                } else {
-                    let lessonType = '';
-                    cell.find('span[title]').each((_, span) => {
-                        const text = $(span).text().trim();
-                        if (text.startsWith('(') && text.endsWith(')')) lessonType = text;
-                    });
-                    
-                    const lesson = {
-                        day: dayName, date: dateMap[dayName] || '', time: time,
-                        name: cell.find('b').first().text().trim(),
-                        fullName: cell.find('b').parent().attr('title')?.trim() || '',
-                        type: lessonType,
-                        subgroups: []
-                    };
-                    
-                    const subgroupTable = cell.find('table.slt_gr_wl table.slt_gr_wl');
-                    if (subgroupTable.length > 0) {
-                        const commonRoom = cell.find('.aud_number').first().text().trim();
-                        subgroupTable.find('td[width="50%"]').each((_, subTd) => {
-                            const subgroupCell = $(subTd);
-                            let specificRoom = subgroupCell.find('.aud_number').text().trim();
-                            lesson.subgroups.push({
-                                room: specificRoom || commonRoom,
-                                teacher: subgroupCell.find('span[title]').last().attr('title')?.trim() || '',
-                                teacherShort: subgroupCell.find('span[title]').last().text().trim().replace(/\(\d+\)/, '').trim(),
-                                subgroupNumber: subgroupCell.text().match(/\((\d+)\)/)?.[1] || null
-                            });
-                        });
-                    }
-                    
-                    if (lesson.subgroups.length === 0) {
-                        const numberMatch = cell.text().match(/\((\d+)\)$/);
-                        lesson.subgroups.push({
-                            room: cell.find('.aud_number').text().trim(),
-                            teacher: cell.find('span[title]').last().attr('title')?.trim() || '',
-                            teacherShort: cell.find('span[title]').last().text().trim(),
-                            subgroupNumber: numberMatch ? numberMatch[1] : null
-                        });
-                    }
-                    schedule.push(lesson);
-                }
-            });
-        });
-        
-        if (schedule.length === 0) {
-            if ($('form[name="sp_student"]').length > 0 && $('.slt').length === 0) {
-                console.warn('Warning: Schedule table not found. The site might have returned a selection page.');
-                return res.status(404).json({ error: 'Schedule not found for these parameters. Maybe wrong group or week?' });
-            }
-        }
-        
-        res.json({ weekInfo, schedule });
-
-    } catch (error) {
-        console.error('Specific error message:', error.message);
-        console.error('Stack trace:', error.stack);
-        res.status(500).json({ error: 'Failed to fetch or parse schedule' });
-    }
-});
-
-// TEACHER SCHEDULE
-
-app.get('/api/all-teachers', async (req, res) => {
+async function updateTeachersCache() {
+    console.log(`[${new Date().toISOString()}] Starting to update teachers cache...`);
     try {
         const chairResponse = await axios.get(TEACHER_BASE_URL, AXIOS_CONFIG);
         const chairHtml = iconv.decode(Buffer.from(chairResponse.data), 'win1251');
@@ -336,6 +96,7 @@ app.get('/api/all-teachers', async (req, res) => {
         $c('select[name="chair_id"] option').each((i, el) => {
             chairs.push({ id: $c(el).attr('value'), name: $c(el).text().trim() });
         });
+
         let allTeachers = [];
         await Promise.all(chairs.map(async (chair) => {
             const formData = new URLSearchParams();
@@ -344,14 +105,162 @@ app.get('/api/all-teachers', async (req, res) => {
             const teacherHtml = iconv.decode(Buffer.from(teacherResponse.data), 'win1251');
             const $t = cheerio.load(teacherHtml);
             $t('select[name="teacher_id"] option').each((j, el) => {
-                allTeachers.push({ id: $t(el).attr('value'), name: $t(el).text().trim(), chairId: chair.id, chairName: chair.name, });
+                allTeachers.push({
+                    id: $t(el).attr('value'), name: $t(el).text().trim(), chairId: chair.id, chairName: chair.name,
+                });
             });
         }));
+        
         const uniqueTeachers = allTeachers.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
-        res.json(uniqueTeachers);
+        await fs.writeFile(TEACHERS_CACHE_PATH, JSON.stringify({ timestamp: Date.now(), data: uniqueTeachers }));
+        console.log(`[${new Date().toISOString()}] Teachers cache updated successfully.`);
     } catch (error) {
-        console.error('Error fetching all teachers:', error.message);
-        res.status(500).json({ error: 'Failed to fetch all teachers' });
+        console.error(`[${new Date().toISOString()}] Failed to update teachers cache:`, error.message);
+    }
+}
+
+async function initializeCache() {
+    try {
+        await fs.mkdir(CACHE_DIR);
+        console.log("Cache directory created.");
+    } catch (e) {
+        if (e.code !== 'EEXIST') throw e;
+    }
+
+    const checkAndUpdateCache = async (filePath, updateFunction) => {
+        try {
+            const stats = await fs.stat(filePath);
+            if (Date.now() - stats.mtime.getTime() > CACHE_TTL) {
+                await updateFunction();
+            } else {
+                console.log(`${path.basename(filePath)} cache is up to date.`);
+            }
+        } catch (e) {
+            if (e.code === 'ENOENT') {
+                console.log(`${path.basename(filePath)} cache not found, creating new one...`);
+                await updateFunction();
+            }
+        }
+    };
+
+    await checkAndUpdateCache(GROUPS_CACHE_PATH, updateGroupsCache);
+    await checkAndUpdateCache(TEACHERS_CACHE_PATH, updateTeachersCache);
+}
+
+// ======================================================
+// =============== API ЭНДПОИНТЫ =========================
+// ======================================================
+
+app.get('/api/all-groups', async (req, res) => {
+    try {
+        const fileContent = await fs.readFile(GROUPS_CACHE_PATH, 'utf-8');
+        const cacheData = JSON.parse(fileContent);
+        res.json(cacheData.data);
+    } catch (error) {
+        console.error('Error reading groups cache:', error.message);
+        res.status(500).json({ error: 'Failed to read groups data' });
+    }
+});
+
+app.get('/api/all-teachers', async (req, res) => {
+    try {
+        const fileContent = await fs.readFile(TEACHERS_CACHE_PATH, 'utf-8');
+        const cacheData = JSON.parse(fileContent);
+        res.json(cacheData.data);
+    } catch (error) {
+        console.error('Error reading teachers cache:', error.message);
+        res.status(500).json({ error: 'Failed to read teachers data' });
+    }
+});
+
+app.post('/api/schedule', async (req, res) => {
+    const { faculty_id, group_id, year_week_number } = req.body;
+    if (!faculty_id || !group_id || !year_week_number) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    try {
+        const formData = new URLSearchParams();
+        formData.append('faculty_id', faculty_id);
+        formData.append('group_id', group_id);
+        formData.append('year_week_number', year_week_number);
+        const response = await axios.post(STUDENT_BASE_URL, formData, AXIOS_CONFIG);
+        const html = iconv.decode(Buffer.from(response.data), 'win1251');
+        const $ = cheerio.load(html);
+        const weekInfo = $('td:contains("Неделя: ")').next().find('td[width="100%"]').text().trim();
+        const startDateString = weekInfo.split(' ')[0];
+        const dateMap = {};
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(startDateString)) {
+            const [day, month, year] = startDateString.split('.').map(Number);
+            const mondayDate = new Date(year, month - 1, day);
+            const daysOfWeek = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+            for (let i = 0; i < 7; i++) {
+                const currentDate = new Date(mondayDate);
+                currentDate.setDate(mondayDate.getDate() + i);
+                const d = String(currentDate.getDate()).padStart(2, '0');
+                const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const y = currentDate.getFullYear();
+                dateMap[daysOfWeek[i]] = `${d}.${m}.${y}`;
+            }
+        }
+        const schedule = [];
+        const mainTable = $('.slt');
+        const headers = [];
+        mainTable.find('> tbody > tr').first().find('th').slice(1).each((i, th) => {
+            headers.push($(th).contents().filter((_, el) => el.type === 'text').text().trim());
+        });
+        mainTable.find('> tbody > tr').slice(1).each((i, tr) => {
+            const time = $(tr).find('th').first().text().trim();
+            if (!time) return;
+            $(tr).children('td').each((j, dayCell) => {
+                const dayName = headers[j];
+                if (!dayName) return;
+                const cell = $(dayCell);
+                if (cell.text().trim() === '') {
+                    schedule.push({ day: dayName, date: dateMap[dayName] || '', time: time, isEmpty: true, name: 'Окно', fullName: '', type: '', subgroups: [] });
+                    return;
+                }
+                const isChoiceLessons = cell.find('td.blb').length > 0;
+                if (isChoiceLessons) {
+                    const lessonCells = cell.find('table.slt_gr_wl > tbody > tr:first-child').children('td');
+                    lessonCells.each((k, lessonCellNode) => {
+                        const lessonCell = $(lessonCellNode);
+                        if (lessonCell.text().trim() === '') return;
+                        let lessonType = '';
+                        lessonCell.find('span[title]').each((_, span) => {
+                            const text = $(span).text().trim();
+                            if (text.startsWith('(') && text.endsWith(')')) lessonType = text;
+                        });
+                        const lesson = { day: dayName, date: dateMap[dayName] || '', time: time, name: lessonCell.find('b').first().text().trim(), fullName: lessonCell.find('b').parent().attr('title')?.trim() || '', type: lessonType, subgroups: [{ room: lessonCell.find('.aud_number').text().trim(), teacher: lessonCell.find('span[title]').last().attr('title')?.trim() || '', teacherShort: lessonCell.find('span[title]').last().text().trim(), subgroupNumber: null }] };
+                        schedule.push(lesson);
+                    });
+                } else {
+                    let lessonType = '';
+                    cell.find('span[title]').each((_, span) => {
+                        const text = $(span).text().trim();
+                        if (text.startsWith('(') && text.endsWith(')')) lessonType = text;
+                    });
+                    const lesson = { day: dayName, date: dateMap[dayName] || '', time: time, name: cell.find('b').first().text().trim(), fullName: cell.find('b').parent().attr('title')?.trim() || '', type: lessonType, subgroups: [] };
+                    const subgroupTable = cell.find('table.slt_gr_wl table.slt_gr_wl');
+                    if (subgroupTable.length > 0) {
+                        const commonRoom = cell.find('.aud_number').first().text().trim();
+                        subgroupTable.find('td[width="50%"]').each((_, subTd) => {
+                            const subgroupCell = $(subTd);
+                            let specificRoom = subgroupCell.find('.aud_number').text().trim();
+                            lesson.subgroups.push({ room: specificRoom || commonRoom, teacher: subgroupCell.find('span[title]').last().attr('title')?.trim() || '', teacherShort: subgroupCell.find('span[title]').last().text().trim().replace(/\(\d+\)/, '').trim(), subgroupNumber: subgroupCell.text().match(/\((\d+)\)/)?.[1] || null });
+                        });
+                    }
+                    if (lesson.subgroups.length === 0) {
+                        const numberMatch = cell.text().match(/\((\d+)\)$/);
+                        lesson.subgroups.push({ room: cell.find('.aud_number').text().trim(), teacher: cell.find('span[title]').last().attr('title')?.trim() || '', teacherShort: cell.find('span[title]').last().text().trim(), subgroupNumber: numberMatch ? numberMatch[1] : null });
+                    }
+                    schedule.push(lesson);
+                }
+            });
+        });
+        res.json({ weekInfo, schedule });
+    } catch (error) {
+        console.error('Error fetching student schedule:', error.message);
+        res.status(500).json({ error: 'Failed to fetch student schedule' });
     }
 });
 
@@ -365,11 +274,9 @@ app.post('/api/teacher-schedule', async (req, res) => {
         formData.append('chair_id', chair_id);
         formData.append('teacher_id', teacher_id);
         formData.append('year_week_number', year_week_number);
-
         const response = await axios.post(TEACHER_BASE_URL, formData, AXIOS_CONFIG);
         const html = iconv.decode(Buffer.from(response.data), 'win1251');
         const $ = cheerio.load(html);
-        
         const weekInfo = $('td:contains("Неделя: ")').next().find('td[width="100%"]').text().trim();
         const startDateString = weekInfo.split(' ')[0];
         const dateMap = {};
@@ -386,61 +293,42 @@ app.post('/api/teacher-schedule', async (req, res) => {
                 dateMap[daysOfWeek[i]] = `${d}.${m}.${y}`;
             }
         }
-
         const schedule = [];
         const mainTable = $('.slt');
         const headers = [];
         mainTable.find('> tbody > tr').first().find('th').slice(1).each((i, th) => {
             headers.push($(th).contents().filter((_, el) => el.type === 'text').text().trim());
         });
-        
         mainTable.find('> tbody > tr').slice(1).each((i, tr) => {
             const time = $(tr).find('th').first().text().trim();
             if (!time) return;
             $(tr).children('td').each((j, dayCell) => {
                 const dayName = headers[j];
                 if (!dayName) return;
-                const cell = $(dayCell).find('td[width="100%"]'); // Ищем внутреннюю ячейку
+                const cell = $(dayCell).find('td[width="100%"]');
                 if (cell.text().trim() === '') {
                     schedule.push({ day: dayName, date: dateMap[dayName] || '', time: time, isEmpty: true, name: 'Окно', groups: [] });
                     return;
                 }
-                
                 let lessonType = '';
                 cell.find('span[title]').each((_, span) => {
                     const text = $(span).text().trim();
                     if (text.startsWith('(') && text.endsWith(')')) lessonType = text;
                 });
-                
                 const lessonName = cell.find('b').first().text().trim();
                 const room = cell.find('.aud_number').text().trim();
-                
-                // ===== НАЧАЛО ИСПРАВЛЕНИЯ =====
-                // 1. Получаем весь текст из ячейки
                 let fullText = cell.text().trim();
-                // 2. Последовательно удаляем из него все, что нам уже известно
                 fullText = fullText.replace(lessonName, '');
                 fullText = fullText.replace(lessonType, '');
                 fullText = fullText.replace(room, '');
-                // 3. То, что осталось - это и есть группы. Очищаем от лишних пробелов и разбиваем
                 const groups = fullText.trim().split(',').map(g => g.trim()).filter(Boolean);
-                // ===== КОНЕЦ ИСПРАВЛЕНИЯ =====
-
                 const lesson = {
-                    day: dayName,
-                    date: dateMap[dayName] || '',
-                    time: time,
-                    name: lessonName,
-                    fullName: cell.find('b').parent().attr('title')?.trim() || '',
-                    type: lessonType,
-                    room: room,
-                    groups: groups // Используем наш новый, правильный массив
+                    day: dayName, date: dateMap[dayName] || '', time: time, name: lessonName,
+                    fullName: cell.find('b').parent().attr('title')?.trim() || '', type: lessonType, room: room, groups: groups
                 };
                 schedule.push(lesson);
-
             });
         });
-
         res.json({ weekInfo, schedule });
     } catch (error) {
         console.error('Error fetching teacher schedule:', error.message);
@@ -448,6 +336,12 @@ app.post('/api/teacher-schedule', async (req, res) => {
     }
 });
 
+// ======================================================
+// =============== ЗАПУСК СЕРВЕРА =======================
+// ======================================================
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    initializeCache();
+    setInterval(initializeCache, 24 * 60 * 60 * 1000); 
 });

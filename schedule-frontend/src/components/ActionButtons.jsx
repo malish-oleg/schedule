@@ -5,8 +5,45 @@ import { useParams } from 'react-router-dom';
 import { FaShareAlt, FaDownload } from 'react-icons/fa';
 import './ActionButtons.css';
 
+function copyToClipboard(text) {
+  // Пробуем использовать новый, современный API, если он доступен (на HTTPS или localhost)
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  } else {
+    // Если новый API недоступен, используем старый, "костыльный" метод
+    return new Promise((resolve, reject) => {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        
+        // Делаем элемент невидимым
+        textArea.style.position = 'fixed';
+        textArea.style.top = '-9999px';
+        textArea.style.left = '-9999px';
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        // Выполняем команду копирования
+        const successful = document.execCommand('copy');
+        
+        document.body.removeChild(textArea);
+
+        if (successful) {
+          resolve();
+        } else {
+          reject(new Error('Copy command was unsuccessful'));
+        }
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+}
+
 function ActionButtons() {
-    const { facultyId, groupId } = useParams();
+    const { type, id1, id2 } = useParams(); 
     const [copySuccess, setCopySuccess] = useState(''); // Состояние для сообщения об успехе
     const [installPrompt, setInstallPrompt] = useState(null);
 
@@ -22,12 +59,15 @@ function ActionButtons() {
 
     // Функция копирования ссылки
     const handleCopyLink = () => {
-        const link = `${window.location.origin}/schedule/${facultyId}/${groupId}`;
-        navigator.clipboard.writeText(link).then(() => {
+        // Используем window.location.origin, так как VITE_PUBLIC_URL может быть неактуален
+        // при прямом доступе по IP
+        const baseUrl = "http://окак.вшн.site"
+        const link = `${baseUrl}/schedule/${type}/${id1}/${id2}`;
+        
+        copyToClipboard(link).then(() => {
             setCopySuccess('Ссылка скопирована!');
-            // Убираем сообщение через 2 секунды
             setTimeout(() => setCopySuccess(''), 2000);
-        }, (err) => {
+        }).catch((err) => {
             setCopySuccess('Ошибка копирования!');
             setTimeout(() => setCopySuccess(''), 2000);
             console.error('Could not copy text: ', err);

@@ -4,11 +4,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: center;
     height: 100%;
     padding: 2rem;
     box-sizing: border-box;
+
+    overflow-y: auto;
 }
 
 .contact-header h1 {
