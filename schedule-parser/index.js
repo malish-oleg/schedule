@@ -151,6 +151,71 @@ async function initializeCache() {
 // =============== API ЭНДПОИНТЫ =========================
 // ======================================================
 
+app.get('/api/faculties', async (req, res) => {
+    try {
+        const response = await axios.get(STUDENT_BASE_URL, AXIOS_CONFIG);
+        const html = iconv.decode(Buffer.from(response.data), 'win1251');
+        const $ = cheerio.load(html);
+        const faculties = [];
+        $('a[href*="sp_student.faculty_id.value"]').each((i, element) => {
+            const hrefAttr = $(element).attr('href');
+            if (hrefAttr) {
+                const idMatch = hrefAttr.match(/faculty_id\.value='(\d+)'/);
+                if (idMatch && idMatch[1]) {
+                    faculties.push({
+                        id: idMatch[1],
+                        name: $(element).find('div').text().trim(),
+                    });
+                }
+            }
+        });
+        res.json(faculties);
+    } catch (error) {
+        console.error('Error fetching faculties:', error.message);
+        res.status(500).json({ error: 'Failed to fetch faculties' });
+    }
+});
+
+app.get('/api/groups/:facultyId', async (req, res) => {
+    const { facultyId } = req.params;
+    if (!facultyId) {
+        return res.status(400).json({ error: 'Faculty ID is required' });
+    }
+    try {
+        const formData = new URLSearchParams();
+        formData.append('faculty_id', facultyId);
+        const response = await axios.post(STUDENT_BASE_URL, formData, AXIOS_CONFIG);
+        const html = iconv.decode(Buffer.from(response.data), 'win1251');
+        const $ = cheerio.load(html);
+        const groups = [];
+        let currentCourse = 'Неизвестный курс';
+        $('td:contains("Группа: ")').next().find('table tr').each((i, tr) => {
+            const row = $(tr);
+            const courseCell = row.find('td[align="center"]');
+            if (courseCell.length > 0) {
+                currentCourse = courseCell.contents().first().text().trim();
+            }
+            row.find('a[href*="sp_student.group_id.value"]').each((j, a) => {
+                const hrefAttr = $(a).attr('href');
+                if (hrefAttr) {
+                    const idMatch = hrefAttr.match(/group_id\.value='(\d+)'/);
+                    if (idMatch && idMatch[1]) {
+                        groups.push({
+                            id: idMatch[1],
+                            name: $(a).text().trim(),
+                            course: currentCourse,
+                        });
+                    }
+                }
+            });
+        });
+        res.json(groups);
+    } catch (error) {
+        console.error('Error fetching groups:', error.message);
+        res.status(500).json({ error: 'Failed to fetch groups' });
+    }
+});
+
 app.get('/api/all-groups', async (req, res) => {
     try {
         const fileContent = await fs.readFile(GROUPS_CACHE_PATH, 'utf-8');
