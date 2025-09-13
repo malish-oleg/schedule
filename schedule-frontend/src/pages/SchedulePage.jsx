@@ -17,6 +17,8 @@ import Overlay from '../components/Overlay';
 import ActionButtons from '../components/ActionButtons';
 import ContactView from '../components/ContactView';
 import { getWeekNumber } from '../utils/dateUtils';
+import ExportButtons from '../components/ExportButtons';
+import CalendarExportButtons from '../components/CalendarExportButtons';
 
 function SchedulePage() {
     // Получаем универсальные параметры из URL
@@ -221,6 +223,19 @@ function SchedulePage() {
                         <ViewSwitcher view={view} setView={setView} />
                         <CalendarPicker selectedDate={selectedDate} view={view} />
                         <ActionButtons />
+                        {(view === 'weekly' || view === 'table') && (
+                            <ExportButtons 
+                                scheduleData={weeklyScheduleData} 
+                                groupName={entityName}
+                            />
+                        )}
+                        {view === 'daily' && (
+                            <CalendarExportButtons 
+                                weekSchedule={weekSchedule} // Передаем НЕФИЛЬТРОВАННЫЕ данные на неделю
+                                groupName={entityName}
+                                entityType={type} // Передаем тип (group/teacher)
+                            />
+                        )}
                     </div>
                 </aside>
                 <Modal 

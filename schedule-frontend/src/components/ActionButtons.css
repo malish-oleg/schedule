@@ -39,3 +39,8 @@
 .action-button span {
     transition: color 0.2s;
 }
+
+.export-buttons {
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.75rem;
+}

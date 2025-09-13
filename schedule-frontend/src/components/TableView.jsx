@@ -31,7 +31,7 @@ function TableView({ weekSchedule, onLessonClick }) {
     }
 
     return (
-        <div className="table-view-container">
+        <div className="table-view-container" id="tableViewForExport">
             <div className="schedule-grid">
                 {/* Заголовки (оси таблицы) */}
                 <div className="table-header time-cell">Время</div>
@@ -94,7 +94,7 @@ function TableView({ weekSchedule, onLessonClick }) {
                                             data-day={day}
                                             data-time={time}
                                         >
-                                            Окно
+                                            
                                         </div>
                                     )}
                                 </div>
