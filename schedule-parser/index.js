@@ -37,6 +37,30 @@ const AXIOS_CONFIG = {
     httpsAgent: httpsAgent,
     responseType: 'arraybuffer',
 };
+const LOGS_DIR = path.join(__dirname, 'logs');
+const REQUEST_LOG_PATH = path.join(LOGS_DIR, 'requests.log');
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || '36646644';
+
+const requestLoggerMiddleware = async (req, res, next) => {
+    try {
+        // Логируем только успешные запросы к расписанию
+        res.on('finish', async () => {
+            if (res.statusCode === 200) {
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    type: req.body.group_id ? 'group' : 'teacher', // Определяем тип по наличию group_id
+                    entityId: req.body.group_id || req.body.teacher_id,
+                    ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress, // Получаем IP пользователя
+                };
+                // Добавляем запись в конец файла
+                await fs.appendFile(REQUEST_LOG_PATH, JSON.stringify(logEntry) + '\n');
+            }
+        });
+    } catch (error) {
+        console.error("Failed to log request:", error);
+    }
+    next();
+};
 
 // ======================================================
 // =============== ЛОГИКА КЕШИРОВАНИЯ ====================
@@ -123,6 +147,13 @@ async function initializeCache() {
     try {
         await fs.mkdir(CACHE_DIR);
         console.log("Cache directory created.");
+    } catch (e) {
+        if (e.code !== 'EEXIST') throw e;
+    }
+
+    try {
+        await fs.mkdir(LOGS_DIR);
+        console.log("Logs directory created.");
     } catch (e) {
         if (e.code !== 'EEXIST') throw e;
     }
@@ -238,7 +269,7 @@ app.get('/api/all-teachers', async (req, res) => {
     }
 });
 
-app.post('/api/schedule', async (req, res) => {
+app.post('/api/schedule', requestLoggerMiddleware, async (req, res) => {
     const { faculty_id, group_id, year_week_number } = req.body;
     if (!faculty_id || !group_id || !year_week_number) {
         return res.status(400).json({ error: 'Missing required parameters' });
@@ -329,7 +360,7 @@ app.post('/api/schedule', async (req, res) => {
     }
 });
 
-app.post('/api/teacher-schedule', async (req, res) => {
+app.post('/api/teacher-schedule', requestLoggerMiddleware, async (req, res) => {
     const { chair_id, teacher_id, year_week_number } = req.body;
     if (!chair_id || !teacher_id || !year_week_number) {
         return res.status(400).json({ error: 'Missing required parameters' });
@@ -398,6 +429,47 @@ app.post('/api/teacher-schedule', async (req, res) => {
     } catch (error) {
         console.error('Error fetching teacher schedule:', error.message);
         res.status(500).json({ error: 'Failed to fetch teacher schedule' });
+    }
+});
+
+app.get('/api/admin/stats/:secretKey', async (req, res) => {
+    // 1. Проверяем секретный ключ
+    if (req.params.secretKey !== ADMIN_SECRET_KEY) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        const logData = await fs.readFile(REQUEST_LOG_PATH, 'utf-8');
+        const logEntries = logData.split('\n').filter(Boolean).map(JSON.parse);
+
+        // 2. Анализируем данные
+        const totalRequests = logEntries.length;
+        
+        const requestsByEntity = logEntries.reduce((acc, entry) => {
+            acc[entry.entityId] = (acc[entry.entityId] || 0) + 1;
+            return acc;
+        }, {});
+        
+        const top10 = Object.entries(requestsByEntity)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([id, count]) => ({ id, count }));
+
+        const uniqueUsers = new Set(logEntries.map(e => e.ip)).size;
+
+        // 3. Отдаем статистику
+        res.json({
+            totalRequests,
+            uniqueUsers,
+            top10,
+        });
+
+    } catch (error) {
+        if (error.code === 'ENOENT') { // Если лог-файл еще не создан
+            return res.json({ totalRequests: 0, uniqueUsers: 0, top10: [] });
+        }
+        console.error("Error reading stats:", error);
+        res.status(500).json({ error: 'Failed to get stats' });
     }
 });
 

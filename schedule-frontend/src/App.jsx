@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-
 import HomePage from './pages/HomePage';
 import SchedulePage from './pages/SchedulePage';
 import Footer from './components/Footer';
+import AdminPage from './pages/AdminPage';
 import './App.css';
 
 function App() {
@@ -21,6 +22,8 @@ function App() {
         {/* Редирект со старых ссылок на новый формат (если нужно) */}
         <Route path="/schedule/:facultyId/:groupId" element={<OldLinkRedirector type="group" />} />
         <Route path="/schedule/:facultyId/:groupId/:week" element={<OldLinkRedirector type="group" />} />
+
+        <Route path="/admin/:secretKey" element={<AdminPage />} />
 
       </Routes>
     </BrowserRouter>
