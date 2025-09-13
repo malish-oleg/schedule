@@ -102,7 +102,7 @@ function ExportButtons({ scheduleData, groupName }) {
         const scale = Math.min(window.devicePixelRatio, 3);
 
         // 2. Делаем скриншот с новым параметром `scale`
-        html2canvas(clone, {
+        html2canvas(gridElement, {
             useCORS: true,
             backgroundColor: backgroundColor,
             width: clone.scrollWidth,
