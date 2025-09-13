@@ -7,7 +7,7 @@ import './ActionButtons.css'; // Мы можем переиспользоват�
 function ExportButtons({ scheduleData, groupName }) {
     
     // Функция экспорта в Excel (XLSX)
-    const handleExportXLSX = async() => {
+    const handleExportXLSX = async () => {
         if (!scheduleData || Object.keys(scheduleData).length === 0) {
             alert("Нет данных для экспорта.");
             return;
@@ -16,26 +16,47 @@ function ExportButtons({ scheduleData, groupName }) {
         const XLSX = await import('xlsx');
 
         const dayOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-        const timeSlots = Array.from(new Set(Object.values(scheduleData).flat().map(l => l.time))).sort();
+        
+        // Получаем все пары из объекта scheduleData и находим уникальные временные слоты
+        const allLessons = Object.values(scheduleData).flat();
+        const timeSlots = Array.from(new Set(allLessons.map(l => l.time))).sort();
 
-        // 1. Создаем заголовки (Время, ПН, ВТ, ...)
         const headers = ["Время", ...dayOrder];
         const data = [headers];
 
-        // 2. Заполняем строки данными
         timeSlots.forEach(time => {
             const row = [time];
             dayOrder.forEach(day => {
-                const lessonsInSlot = scheduleData[day]?.filter(l => l.time === time);
-                if (lessonsInSlot && lessonsInSlot.length > 0) {
-                    // Собираем текст для ячейки
-                    const cellText = lessonsInSlot.map(lesson => {
-                        if (lesson.isEmpty) return "Окно";
-                        const details = lesson.isChoice ? 
-                            lesson.choiceLessons.map(l => `${l.name} (${l.type})`).join('\n') :
-                            `${lesson.name} (${lesson.type})\n${lesson.subgroups[0]?.teacherShort || ''}\n${lesson.subgroups[0]?.room || ''}`;
-                        return details;
-                    }).join('\n---\n');
+                // Находим все "супер-объекты" пар для данного дня и времени
+                const lessonsInSlot = scheduleData[day]?.filter(l => l.time === time) || [];
+                
+                if (lessonsInSlot.length > 0) {
+                    const cellText = lessonsInSlot.map(lessonObject => {
+                        // lessonObject - это наш "супер-объект"
+                        if (lessonObject.isEmpty) return "Окно";
+
+                        // Если это дисциплина по выбору, обрабатываем ее choiceLessons
+                        if (lessonObject.isChoice) {
+                            return lessonObject.choiceLessons.map(l => {
+                                const isTeacherView = l.groups !== undefined;
+                                if (isTeacherView) {
+                                    return `${l.name} (${l.type})\nГруппы: ${l.groups.join(', ')}\nАуд: ${l.room}`;
+                                } else {
+                                    return `${l.name} (${l.type})\n${l.subgroups.map(sg => `${sg.teacherShort} (${sg.room})`).join(', ')}`;
+                                }
+                            }).join('\n---\n');
+                        }
+                        
+                        // Если это обычная одиночная пара
+                        const isTeacherView = lessonObject.groups !== undefined;
+                        if (isTeacherView) {
+                            return `${lessonObject.name} (${lessonObject.type})\nГруппы: ${lessonObject.groups.join(', ')}\nАуд: ${lessonObject.room}`;
+                        } else {
+                            return `${lessonObject.name} (${lessonObject.type})\n${lessonObject.subgroups.map(sg => `${sg.teacherShort} (${sg.room})`).join(', ')}`;
+                        }
+
+                    }).join('\n---\n'); // Соединяем, если вдруг в ячейке несколько "супер-объектов" (не должно быть)
+
                     row.push(cellText);
                 } else {
                     row.push(""); // Пустая ячейка
@@ -44,7 +65,6 @@ function ExportButtons({ scheduleData, groupName }) {
             data.push(row);
         });
         
-        // 3. Создаем и скачиваем файл
         const worksheet = XLSX.utils.aoa_to_sheet(data);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Расписание");
@@ -52,26 +72,61 @@ function ExportButtons({ scheduleData, groupName }) {
     };
 
     // Функция экспорта в PNG
-    const handleExportPNG = async() => {
-        // Ищем элемент с таблицей в DOM. Мы дадим ему id='tableView'
-        const tableViewElement = document.getElementById('tableViewForExport');
+    const handleExportPNG = async () => {
+        const tableViewContainer = document.getElementById('tableViewForExport');
+        const gridElement = tableViewContainer?.querySelector('.schedule-grid');
         
-        if (!tableViewElement) {
+        if (!tableViewContainer || !gridElement) {
             alert("Для экспорта в PNG откройте вид 'Таблица'.");
             return;
         }
 
         const { default: html2canvas } = await import('html2canvas');
 
-        html2canvas(tableViewElement, {
-            useCORS: true, // На случай, если есть внешние изображения
-            scale: 2, // Увеличиваем разрешение для лучшего качества
+        // ===== НАЧАЛО НОВОЙ ЛОГИКИ =====
+
+        // 1. Находим все "липкие" элементы
+        const stickyElements = Array.from(gridElement.querySelectorAll('.time-cell, .table-header'));
+        
+        // 2. Временно убираем "липкость", чтобы она не мешала скриншоту
+        stickyElements.forEach(el => el.style.position = 'static');
+
+        // 3. Сохраняем текущую позицию скролла, чтобы вернуть ее позже
+        const originalScrollTop = tableViewContainer.scrollTop;
+        const originalScrollLeft = tableViewContainer.scrollLeft;
+        // Прокручиваем в самое начало
+        tableViewContainer.scrollTop = 0;
+        tableViewContainer.scrollLeft = 0;
+
+        const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim();
+        
+        // 4. Делаем скриншот
+        html2canvas(gridElement, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: backgroundColor,
+            // Указываем, что нужно захватить всю область скролла
+            width: gridElement.scrollWidth,
+            height: gridElement.scrollHeight,
+            // Скролл уже на месте, поэтому эти параметры нулевые
+            scrollX: 0,
+            scrollY: 0,
         }).then(canvas => {
             const link = document.createElement('a');
             link.download = `Расписание_${groupName}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
+        }).catch(err => {
+            console.error("Ошибка при создании PNG:", err);
+            alert("Произошла ошибка при создании изображения.");
+        }).finally(() => {
+            // 5. ВАЖНО: Возвращаем все как было
+            stickyElements.forEach(el => el.style.position = 'sticky');
+            tableViewContainer.scrollTop = originalScrollTop;
+            tableViewContainer.scrollLeft = originalScrollLeft;
         });
+
+        // ===== КОНЕЦ НОВОЙ ЛОГИКИ =====
     };
 
     return (

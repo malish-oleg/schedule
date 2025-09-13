@@ -1,3 +1,5 @@
 /node_modules
 .env
 .enc.local
+/cache
+/logs
