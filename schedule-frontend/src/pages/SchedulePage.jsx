@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useSwipe } from '../hooks/useSwipe';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import CalendarPicker from '../components/CalendarPicker';
@@ -23,6 +24,7 @@ import CalendarExportButtons from '../components/CalendarExportButtons';
 function SchedulePage() {
     // Получаем универсальные параметры из URL
     const { type, id1, id2, year, month, day } = useParams();
+    const navigate = useNavigate();
     const selectedDate = useMemo(() => new Date(year, month - 1, day), [year, month, day]);
     
     const timelineWrapperRef = useRef(null); 
@@ -148,6 +150,28 @@ function SchedulePage() {
         setSelectedLesson(null);
     };
 
+    const navigateToDay = (date) => {
+        const newYear = date.getFullYear();
+        const newMonth = date.getMonth() + 1;
+        const newDay = date.getDate();
+        navigate(`/schedule/${type}/${id1}/${id2}/${newYear}/${newMonth}/${newDay}`);
+    };
+    
+    const handlePrevDay = () => {
+        const prevDay = new Date(selectedDate);
+        prevDay.setDate(prevDay.getDate() - 1);
+        navigateToDay(prevDay);
+    };
+
+    const handleNextDay = () => {
+        const nextDay = new Date(selectedDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        navigateToDay(nextDay);
+    };
+
+    // ===== ИСПОЛЬЗУЕМ ХУК СВАЙПА =====
+    const swipeHandlers = useSwipe(handleNextDay, handlePrevDay);
+
     // Определяем данные для сайдбара
     const sidebarTitle = type === 'group' ? 'Группа' : 'Преподаватель';
     const sidebarInitials = entityName ? (type === 'teacher' ? entityName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : entityName.substring(0, 2)) : '..';
@@ -188,12 +212,14 @@ function SchedulePage() {
                             ) : (
                                 <>
                                     {view === 'daily' && (
-                                        <DailyView 
-                                            schedule={dailySchedule} 
-                                            date={selectedDate}
-                                            onLessonClick={openModal}
-                                            timelineRef={timelineWrapperRef}
-                                        />
+                                        <div className="swipe-wrapper" {...swipeHandlers}>
+                                            <DailyView 
+                                                schedule={dailySchedule} 
+                                                date={selectedDate}
+                                                onLessonClick={openModal}
+                                                timelineRef={timelineWrapperRef}
+                                            />
+                                        </div>
                                     )}
                                     {view === 'weekly' && (
                                         <WeeklyView 
