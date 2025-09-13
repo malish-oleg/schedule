@@ -79,3 +79,34 @@
     padding-right: 1rem;
     margin-right: -1rem;
 }
+
+.update-link-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem;
+  margin: 1.5rem 0 0.5rem 0;
+  border-radius: var(--border-radius-subtle);
+  border: none;
+  background-color: var(--color-primary);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.update-link-button:hover {
+  opacity: 0.9;
+}
+
+.close-update-button {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
